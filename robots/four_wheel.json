@@ -3,7 +3,8 @@
   "chassis": {
     "type": "box",
     "size": [0.6, 0.12, 0.35],
-    "mass": 8.0
+    "mass": 8.0,
+    "visual": { "mesh": "parts/chassis_large.obj", "scale": 1.0 }
   },
   "wheels": [
     {
@@ -11,31 +12,42 @@
       "radius": 0.08,
       "width": 0.04,
       "offset": [0.2, 0, -0.22],
-      "motor": true
+      "motor": true,
+      "visual": { "mesh": "parts/wheel_std.obj", "scale": 0.8 }
     },
     {
       "side": "front_right",
       "radius": 0.08,
       "width": 0.04,
       "offset": [0.2, 0, 0.22],
-      "motor": true
+      "motor": true,
+      "visual": { "mesh": "parts/wheel_std.obj", "scale": 0.8 }
     },
     {
       "side": "rear_left",
       "radius": 0.08,
       "width": 0.04,
       "offset": [-0.2, 0, -0.22],
-      "motor": true
+      "motor": true,
+      "visual": { "mesh": "parts/wheel_std.obj", "scale": 0.8 }
     },
     {
       "side": "rear_right",
       "radius": 0.08,
       "width": 0.04,
       "offset": [-0.2, 0, 0.22],
-      "motor": true
+      "motor": true,
+      "visual": { "mesh": "parts/wheel_std.obj", "scale": 0.8 }
     }
   ],
   "casters": [],
+  "extras": [
+    {
+      "name": "camera",
+      "offset": [0.22, 0.08, 0.0],
+      "visual": { "mesh": "parts/camera.obj", "scale": 1.0 }
+    }
+  ],
   "max_motor_speed": 12.0,
   "max_torque": 3.0
 }

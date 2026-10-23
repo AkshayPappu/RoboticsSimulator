@@ -15,6 +15,8 @@ cmake-build-*/
 # Compiled objects
 *.o
 *.obj
+# Wavefront part meshes (not MSVC object files)
+!assets/**/*.obj
 *.exe
 *.dll
 *.so
@@ -56,6 +58,9 @@ tensorboard/
 # Telemetry output
 output/
 *.csv
+
+# Assembler live preview
+robots/_assembled_preview.json
 
 # OS files
 .DS_Store

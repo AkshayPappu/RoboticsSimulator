@@ -1,0 +1,420 @@
+{
+  "version": 1,
+  "parts": [
+    {
+      "id": "chassis_small",
+      "name": "Small chassis",
+      "category": "chassis",
+      "mesh": "parts/chassis_small.obj",
+      "collision": {
+        "shape": "box",
+        "size": [
+          0.35,
+          0.08,
+          0.2
+        ]
+      },
+      "mass": 3.0,
+      "mounts": [
+        {
+          "id": "wheel_left",
+          "pos": [
+            0.0,
+            -0.02,
+            -0.12
+          ],
+          "role": "wheel"
+        },
+        {
+          "id": "wheel_right",
+          "pos": [
+            0.0,
+            -0.02,
+            0.12
+          ],
+          "role": "wheel"
+        },
+        {
+          "id": "caster_rear",
+          "pos": [
+            -0.12,
+            -0.02,
+            0.0
+          ],
+          "role": "caster"
+        },
+        {
+          "id": "deck_front",
+          "pos": [
+            0.12,
+            0.05,
+            0.0
+          ],
+          "role": "sensor"
+        },
+        {
+          "id": "deck_center",
+          "pos": [
+            0.0,
+            0.05,
+            0.0
+          ],
+          "role": "arm"
+        }
+      ]
+    },
+    {
+      "id": "chassis_medium",
+      "name": "TurtleBot3 Burger chassis",
+      "category": "chassis",
+      "mesh": "parts/turtlebot3/burger_base.obj",
+      "visual": {
+        "mesh": "parts/turtlebot3/burger_base.obj",
+        "scale": 1.0,
+        "color": [0.30, 0.31, 0.34],
+        "metallic": 0.05,
+        "roughness": 0.72
+      },
+      "collision": {
+        "shape": "box",
+        "size": [
+          0.5,
+          0.15,
+          0.3
+        ]
+      },
+      "mass": 5.0,
+      "mounts": [
+        {
+          "id": "wheel_left",
+          "pos": [
+            0.0,
+            0.0,
+            -0.16
+          ],
+          "role": "wheel"
+        },
+        {
+          "id": "wheel_right",
+          "pos": [
+            0.0,
+            0.0,
+            0.16
+          ],
+          "role": "wheel"
+        },
+        {
+          "id": "caster_rear",
+          "pos": [
+            -0.16,
+            0.0,
+            0.0
+          ],
+          "role": "caster"
+        },
+        {
+          "id": "deck_front",
+          "pos": [
+            0.18,
+            0.09,
+            0.0
+          ],
+          "role": "sensor"
+        },
+        {
+          "id": "deck_center",
+          "pos": [
+            0.0,
+            0.09,
+            0.0
+          ],
+          "role": "arm"
+        },
+        {
+          "id": "hub_left",
+          "pos": [
+            0.0,
+            0.0,
+            -0.12
+          ],
+          "role": "hub"
+        },
+        {
+          "id": "hub_right",
+          "pos": [
+            0.0,
+            0.0,
+            0.12
+          ],
+          "role": "hub"
+        }
+      ]
+    },
+    {
+      "id": "chassis_large",
+      "name": "Large chassis",
+      "category": "chassis",
+      "mesh": "parts/chassis_large.obj",
+      "collision": {
+        "shape": "box",
+        "size": [
+          0.6,
+          0.12,
+          0.35
+        ]
+      },
+      "mass": 8.0,
+      "mounts": [
+        {
+          "id": "wheel_fl",
+          "pos": [
+            0.2,
+            0.0,
+            -0.22
+          ],
+          "role": "wheel"
+        },
+        {
+          "id": "wheel_fr",
+          "pos": [
+            0.2,
+            0.0,
+            0.22
+          ],
+          "role": "wheel"
+        },
+        {
+          "id": "wheel_rl",
+          "pos": [
+            -0.2,
+            0.0,
+            -0.22
+          ],
+          "role": "wheel"
+        },
+        {
+          "id": "wheel_rr",
+          "pos": [
+            -0.2,
+            0.0,
+            0.22
+          ],
+          "role": "wheel"
+        },
+        {
+          "id": "deck_front",
+          "pos": [
+            0.22,
+            0.08,
+            0.0
+          ],
+          "role": "sensor"
+        },
+        {
+          "id": "deck_center",
+          "pos": [
+            0.0,
+            0.08,
+            0.0
+          ],
+          "role": "arm"
+        }
+      ]
+    },
+    {
+      "id": "wheel_std",
+      "name": "TurtleBot3 tire",
+      "category": "wheel",
+      "mesh": "parts/turtlebot3/left_tire.obj",
+      "visual": {
+        "mesh": "parts/turtlebot3/left_tire.obj",
+        "scale": 1.0,
+        "color": [0.07, 0.07, 0.08],
+        "metallic": 0.0,
+        "roughness": 0.92
+      },
+      "collision": {
+        "shape": "cylinder",
+        "radius": 0.1,
+        "height": 0.05
+      },
+      "mass": 0.4,
+      "mounts": []
+    },
+    {
+      "id": "wheel_caster",
+      "name": "Caster wheel",
+      "category": "caster",
+      "mesh": "parts/wheel_caster.obj",
+      "collision": {
+        "shape": "sphere",
+        "radius": 0.05
+      },
+      "mass": 0.15,
+      "mounts": []
+    },
+    {
+      "id": "motor_hub",
+      "name": "Motor hub",
+      "category": "hub",
+      "mesh": "parts/motor_hub.obj",
+      "collision": {
+        "shape": "cylinder",
+        "radius": 0.035,
+        "height": 0.06
+      },
+      "mass": 0.12,
+      "visual_only": true,
+      "mounts": []
+    },
+    {
+      "id": "lidar",
+      "name": "TurtleBot3 LDS",
+      "category": "sensor",
+      "mesh": "parts/turtlebot3/lds.obj",
+      "visual": {
+        "mesh": "parts/turtlebot3/lds.obj",
+        "scale": 1.0,
+        "color": [0.14, 0.15, 0.17],
+        "metallic": 0.15,
+        "roughness": 0.55
+      },
+      "collision": {
+        "shape": "cylinder",
+        "radius": 0.04,
+        "height": 0.07
+      },
+      "mass": 0.08,
+      "visual_only": true,
+      "mounts": []
+    },
+    {
+      "id": "camera",
+      "name": "Camera",
+      "category": "sensor",
+      "mesh": "parts/camera.obj",
+      "collision": {
+        "shape": "box",
+        "size": [
+          0.05,
+          0.04,
+          0.035
+        ]
+      },
+      "mass": 0.05,
+      "visual_only": true,
+      "mounts": []
+    },
+    {
+      "id": "arm_link_a",
+      "name": "Arm link A",
+      "category": "arm",
+      "mesh": "parts/arm_link_a.obj",
+      "collision": {
+        "shape": "box",
+        "size": [
+          0.08,
+          0.35,
+          0.08
+        ]
+      },
+      "mass": 1.2,
+      "mounts": [
+        {
+          "id": "end",
+          "pos": [
+            0.0,
+            0.32,
+            0.0
+          ],
+          "role": "arm"
+        }
+      ]
+    },
+    {
+      "id": "arm_link_b",
+      "name": "Arm link B",
+      "category": "arm",
+      "mesh": "parts/arm_link_b.obj",
+      "collision": {
+        "shape": "box",
+        "size": [
+          0.07,
+          0.3,
+          0.07
+        ]
+      },
+      "mass": 0.8,
+      "mounts": [
+        {
+          "id": "end",
+          "pos": [
+            0.0,
+            0.2,
+            0.0
+          ],
+          "role": "arm"
+        }
+      ]
+    },
+    {
+      "id": "gripper",
+      "name": "Gripper",
+      "category": "arm",
+      "mesh": "parts/gripper.obj",
+      "collision": {
+        "shape": "sphere",
+        "radius": 0.05
+      },
+      "mass": 0.3,
+      "joint": "fixed",
+      "mounts": []
+    },
+    {
+      "id": "obstacle_crate",
+      "name": "Crate",
+      "category": "obstacle",
+      "mesh": "parts/obstacle_crate.obj",
+      "collision": {
+        "shape": "box",
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "mass": 0.0,
+      "mounts": []
+    },
+    {
+      "id": "obstacle_barrel",
+      "name": "Barrel",
+      "category": "obstacle",
+      "mesh": "parts/obstacle_barrel.obj",
+      "collision": {
+        "shape": "cylinder",
+        "radius": 0.5,
+        "height": 0.6
+      },
+      "mass": 0.0,
+      "mounts": []
+    },
+    {
+      "id": "ground_asphalt",
+      "name": "Asphalt ground",
+      "category": "ground",
+      "mesh": "parts/ground_plane.obj",
+      "texture": "textures/asphalt.png",
+      "collision": {
+        "shape": "box",
+        "size": [
+          200.0,
+          0.2,
+          200.0
+        ]
+      },
+      "mass": 0.0,
+      "mounts": []
+    }
+  ]
+}

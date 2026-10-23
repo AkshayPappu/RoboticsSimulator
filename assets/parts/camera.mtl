@@ -1,0 +1,21 @@
+newmtl paint
+Kd 0.120 0.120 0.140
+Ka 0.15 0.15 0.15
+Ks 0.25 0.25 0.25
+Ns 40
+map_Kd ../textures/rubber.png
+
+newmtl lens
+Kd 0.100 0.250 0.400
+Ka 0.15 0.15 0.15
+Ks 0.25 0.25 0.25
+Ns 40
+map_Kd ../textures/lens.png
+
+newmtl metal
+Kd 0.550 0.550 0.580
+Ka 0.15 0.15 0.15
+Ks 0.25 0.25 0.25
+Ns 40
+map_Kd ../textures/aluminum.png
+

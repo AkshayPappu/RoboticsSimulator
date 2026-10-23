@@ -3,6 +3,8 @@
 #include "physics/ChronoEngine.h"
 
 #include <chrono_irrlicht/ChVisualSystemIrrlicht.h>
+#include <chrono/core/ChRotation.h>
+#include <chrono/utils/ChConstants.h>
 #include <irrlicht.h>
 
 #include <imgui.h>
@@ -134,9 +136,11 @@ void Renderer::Initialize(PhysicsWorld& world, const RendererConfig& config) {
 
     m_windowWidth = config.windowWidth;
     m_windowHeight = config.windowHeight;
+    m_vis->SetAntialias(true);
     m_vis->SetWindowSize(config.windowWidth, config.windowHeight);
     m_vis->SetWindowTitle(config.windowTitle);
     m_vis->SetCameraVertical(CameraVerticalDir::Y);
+    m_vis->SetBackgroundColor(ChColor(0.58f, 0.68f, 0.78f));
 
     m_vis->Initialize();
 
@@ -145,12 +149,19 @@ void Renderer::Initialize(PhysicsWorld& world, const RendererConfig& config) {
         ChVector3d(config.lookAtX, config.lookAtY, config.lookAtZ)
     );
 
-    m_vis->AddTypicalLights();
+    m_vis->AddSkyBox();
+    // One warm key + one cool fill. AddTypicalLights() stacked on this washes meshes white.
     m_vis->AddLightDirectional(
-        50.0, 35.0,
-        ChColor(0.45f, 0.48f, 0.52f),
-        ChColor(0.25f, 0.25f, 0.25f),
-        ChColor(1.0f, 1.0f, 1.0f)
+        48.0, 38.0,
+        ChColor(0.42f, 0.44f, 0.48f),
+        ChColor(0.16f, 0.16f, 0.14f),
+        ChColor(1.00f, 0.95f, 0.86f)
+    );
+    m_vis->AddLight(ChVector3d(-5.0, 6.0, 4.0), 14.0, ChColor(0.40f, 0.48f, 0.58f));
+    m_vis->AddGrid(
+        1.0, 1.0, 24, 24,
+        ChCoordsys<>(ChVector3d(0, 0.002, 0), QuatFromAngleX(-CH_PI_2)),
+        ChColor(0.50f, 0.54f, 0.58f)
     );
 
     // Register event receiver for keyboard/mouse input
@@ -237,6 +248,16 @@ bool Renderer::IsKeyPressed(int key) const {
         return m_eventReceiver->IsKeyDown(key);
     }
     return false;
+}
+
+bool Renderer::GetCameraLook(double& ex, double& ey, double& ez,
+                             double& tx, double& ty, double& tz) const {
+    if (!m_vis) return false;
+    auto eye = m_vis->GetCameraPosition();
+    auto target = m_vis->GetCameraTarget();
+    ex = eye.x(); ey = eye.y(); ez = eye.z();
+    tx = target.x(); ty = target.y(); tz = target.z();
+    return true;
 }
 
 int Renderer::GetWindowWidth() const {

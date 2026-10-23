@@ -6,7 +6,9 @@
 #include "rendering/EditorUI.h"
 #include "robotics/Robot.h"
 #include "robotics/Controller.h"
+#include "robotics/PartCatalog.h"
 
+#include <chrono/core/ChDataPath.h>
 #include <iostream>
 #include <chrono>
 #include <thread>
@@ -19,12 +21,16 @@ Simulation::Simulation() = default;
 Simulation::~Simulation() = default;
 
 void Simulation::Init(const SimulationConfig& config) {
+#ifdef CHRONO_DATA_DIR
+    chrono::SetChronoDataPath(CHRONO_DATA_DIR);
+#endif
     m_config = config;
 
     m_world = std::make_unique<PhysicsWorld>();
     m_world->SetTimestep(config.physicsTimestep);
 
     m_sceneManager = std::make_unique<SceneManager>(*m_world);
+    PartCatalog::Instance().Load();
 
     if (!config.headless) {
         m_renderer = std::make_unique<Renderer>();
@@ -113,16 +119,12 @@ void Simulation::Run() {
             }
         }
 
-        // Render
         if (m_renderer) {
             m_renderer->BeginFrame();
             m_renderer->Render();
-
-            // Render editor UI (ImGui) on top of the 3D scene
             if (m_editorUI) {
                 m_editorUI->Render();
             }
-
             m_renderer->EndFrame();
         }
 

@@ -1,10 +1,12 @@
 #include "physics/RigidBody.h"
+#include "physics/Assets.h"
 
 #include <chrono/physics/ChBodyEasy.h>
 #include <chrono/assets/ChVisualShapeBox.h>
 #include <chrono/assets/ChVisualShapeSphere.h>
 #include <chrono/assets/ChVisualShapeCylinder.h>
 #include <chrono/assets/ChVisualModel.h>
+#include <chrono/assets/ChVisualMaterial.h>
 #include <chrono/assets/ChColor.h>
 #include <chrono/collision/ChCollisionModel.h>
 #include <chrono/utils/ChConstants.h>
@@ -136,7 +138,17 @@ std::shared_ptr<RigidBody> RigidBody::CreateGround(const Material& material) {
     body->SetName("ground");
 
     rb->m_body = body;
-    rb->SetColor(0.32f, 0.48f, 0.28f);
+    rb->SetColor(0.78f, 0.76f, 0.72f);
+    VisualSpec groundVis;
+    groundVis.texture = "textures/studio_floor.png";
+    groundVis.texScaleX = 25.0f;
+    groundVis.texScaleY = 25.0f;
+    groundVis.colorR = 0.78f;
+    groundVis.colorG = 0.76f;
+    groundVis.colorB = 0.72f;
+    groundVis.metallic = 0.0f;
+    groundVis.roughness = 0.88f;
+    rb->ApplyVisual(groundVis, false);
     return rb;
 }
 
@@ -231,6 +243,40 @@ void RigidBody::SetCollisionFamily(int family, bool collideWithSameFamily) {
     model->SetFamily(family);
     if (!collideWithSameFamily) {
         model->DisallowCollisionsWith(family);
+    }
+}
+
+void RigidBody::AddVisualMesh(const std::string& path, double scale,
+                              double ox, double oy, double oz) {
+    VisualSpec spec;
+    spec.mesh = path;
+    spec.scaleX = spec.scaleY = spec.scaleZ = scale;
+    spec.offsetX = ox;
+    spec.offsetY = oy;
+    spec.offsetZ = oz;
+    ApplyVisual(spec, true);
+}
+
+void RigidBody::ApplyVisual(const VisualSpec& spec, bool replaceDefault) {
+    if (!m_body) return;
+    ApplyVisualSpec(*m_body, spec, replaceDefault);
+}
+
+void RigidBody::SetPbr(float metallic, float roughness) {
+    if (!m_body) return;
+    auto vis = m_body->GetVisualModel();
+    if (!vis) return;
+    for (unsigned int i = 0; i < vis->GetNumShapes(); ++i) {
+        auto shape = vis->GetShape(i);
+        if (shape->GetNumMaterials() == 0) {
+            auto mat = MakeVisualMaterial(0.6f, 0.6f, 0.6f, metallic, roughness);
+            shape->AddMaterial(mat);
+        } else {
+            auto mat = shape->GetMaterial(0);
+            mat->SetMetallic(metallic);
+            mat->SetRoughness(roughness);
+            mat->SetUseSpecularWorkflow(false);
+        }
     }
 }
 

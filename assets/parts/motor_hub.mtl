@@ -1,0 +1,14 @@
+newmtl metal
+Kd 0.600 0.620 0.640
+Ka 0.15 0.15 0.15
+Ks 0.25 0.25 0.25
+Ns 40
+map_Kd ../textures/aluminum.png
+
+newmtl paint
+Kd 0.700 0.200 0.160
+Ka 0.15 0.15 0.15
+Ks 0.25 0.25 0.25
+Ns 40
+map_Kd ../textures/paint_red.png
+

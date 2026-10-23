@@ -1,0 +1,28 @@
+Robotics Simulator mesh kit
+===========================
+
+Generated kit
+-------------
+The original OBJ meshes, MTL files, and PNG textures under assets/parts and
+assets/textures (except assets/parts/turtlebot3/) were authored for this
+project and are released with the repository.
+
+Procedural albedo maps (asphalt, grass, aluminum, rubber, paint, wood, lens)
+are original generated noise, not copies of Poly Haven or other libraries.
+
+
+TurtleBot3 Burger (third-party)
+------------------------------
+assets/parts/turtlebot3/ contains visual meshes derived from ROBOTIS TurtleBot3:
+
+  Source : https://github.com/ROBOTIS-GIT/turtlebot3
+           package turtlebot3_description
+  License: Apache License 2.0 (copy in assets/parts/turtlebot3/LICENSE)
+  Files  : burger_base, left_tire, right_tire, lds
+
+Modifications (see assets/parts/turtlebot3/NOTICE):
+  millimeters to meters, ROS Z-up to Chrono Y-up, AABB-centered, uniformly
+  scaled to the existing DiffDrive collision hulls. Physics sizes are unchanged.
+
+TurtleBot3 Burger has no separate licensed caster mesh; the caster visual
+stays the generated sphere in this kit.

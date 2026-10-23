@@ -3,7 +3,14 @@
   "chassis": {
     "type": "box",
     "size": [0.5, 0.15, 0.3],
-    "mass": 5.0
+    "mass": 5.0,
+    "visual": {
+      "mesh": "parts/turtlebot3/burger_base.obj",
+      "scale": 1.0,
+      "color": [0.30, 0.31, 0.34],
+      "metallic": 0.05,
+      "roughness": 0.72
+    }
   },
   "wheels": [
     {
@@ -11,20 +18,52 @@
       "radius": 0.1,
       "width": 0.05,
       "offset": [0, 0, -0.16],
-      "motor": true
+      "motor": true,
+      "visual": {
+        "mesh": "parts/turtlebot3/left_tire.obj",
+        "scale": 1.0,
+        "color": [0.07, 0.07, 0.08],
+        "metallic": 0.0,
+        "roughness": 0.92
+      }
     },
     {
       "side": "right",
       "radius": 0.1,
       "width": 0.05,
       "offset": [0, 0, 0.16],
-      "motor": true
+      "motor": true,
+      "visual": {
+        "mesh": "parts/turtlebot3/right_tire.obj",
+        "scale": 1.0,
+        "color": [0.07, 0.07, 0.08],
+        "metallic": 0.0,
+        "roughness": 0.92
+      }
     }
   ],
   "casters": [
     {
       "radius": 0.05,
-      "offset": [-0.16, 0, 0]
+      "offset": [-0.16, 0, 0],
+      "visual": {
+        "mesh": "parts/wheel_caster.obj",
+        "scale": 1.0,
+        "color": [0.62, 0.63, 0.66]
+      }
+    }
+  ],
+  "extras": [
+    {
+      "name": "lidar",
+      "offset": [0.0, 0.184, 0.0],
+      "visual": {
+        "mesh": "parts/turtlebot3/lds.obj",
+        "scale": 1.0,
+        "color": [0.14, 0.15, 0.17],
+        "metallic": 0.15,
+        "roughness": 0.55
+      }
     }
   ],
   "max_motor_speed": 10.0,

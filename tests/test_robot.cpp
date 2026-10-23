@@ -4,7 +4,9 @@
 #include "robotics/Robot.h"
 #include "robotics/Joint.h"
 #include "robotics/Motor.h"
+#include "robotics/PartCatalog.h"
 #include <cmath>
+#include <string>
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -222,4 +224,51 @@ TEST_F(RobotTest, DrivesForwardOnGround) {
     EXPECT_GT(y1, 0.05);
     EXPECT_LT(y1, 0.50);
     EXPECT_FALSE(robot.IsFlipped());
+}
+
+TEST_F(RobotTest, PartCatalogLoads) {
+    auto& catalog = PartCatalog::Instance();
+    ASSERT_TRUE(catalog.Load());
+    EXPECT_NE(catalog.Find("chassis_medium"), nullptr);
+    EXPECT_NE(catalog.Find("wheel_std"), nullptr);
+    EXPECT_FALSE(catalog.ByCategory("chassis").empty());
+}
+
+TEST_F(RobotTest, AssemblyJsonBuildsDriveableRobot) {
+    auto& catalog = PartCatalog::Instance();
+    ASSERT_TRUE(catalog.Load());
+
+    std::string path = "robots/assembled_diff.json";
+#ifdef SIM_ROBOTS_DIR
+    path = std::string(SIM_ROBOTS_DIR) + "/assembled_diff.json";
+#endif
+    Robot robot;
+    robot.BuildFromJson(*world, path);
+    EXPECT_NE(robot.GetChassis(), nullptr);
+    EXPECT_EQ(robot.GetMotors().size(), 2u);
+
+    for (int i = 0; i < 200; ++i) world->Step();
+    robot.SetWheelSpeeds(8.0, 8.0);
+    double x0, y0, z0;
+    robot.GetPosition(x0, y0, z0);
+    for (int i = 0; i < 2000; ++i) world->Step();
+    double x1, y1, z1;
+    robot.GetPosition(x1, y1, z1);
+    double dist = std::sqrt((x1 - x0) * (x1 - x0) + (z1 - z0) * (z1 - z0));
+    EXPECT_GT(dist, 0.25);
+    EXPECT_FALSE(robot.IsFlipped());
+}
+
+TEST_F(RobotTest, RestyledJsonKeepsPhysicsSizes) {
+    std::string path = "robots/differential_drive.json";
+#ifdef SIM_ROBOTS_DIR
+    path = std::string(SIM_ROBOTS_DIR) + "/differential_drive.json";
+#endif
+    Robot robot;
+    robot.BuildFromJson(*world, path);
+    EXPECT_NEAR(robot.GetConfig().chassisSizeX, 0.5, 1e-6);
+    EXPECT_NEAR(robot.GetConfig().chassisSizeY, 0.15, 1e-6);
+    EXPECT_EQ(robot.GetConfig().wheels.size(), 2u);
+    EXPECT_TRUE(robot.GetConfig().chassisVisual.HasMesh());
+    EXPECT_NE(robot.GetConfig().chassisVisual.mesh.find("turtlebot3"), std::string::npos);
 }

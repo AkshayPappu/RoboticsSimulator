@@ -1,5 +1,7 @@
 #pragma once
 
+#include "physics/Assets.h"
+
 #include <memory>
 #include <vector>
 #include <string>
@@ -22,6 +24,7 @@ struct WheelSpec {
     double offsetY = 0.0;
     double offsetZ = 0.16;
     bool motor = true;
+    VisualSpec visual;
 };
 
 struct CasterSpec {
@@ -31,6 +34,7 @@ struct CasterSpec {
     double offsetX = -0.2;
     double offsetY = 0.0;
     double offsetZ = 0.0;
+    VisualSpec visual;
 };
 
 struct LinkSpec {
@@ -50,6 +54,15 @@ struct LinkSpec {
     double axisY = 0.0;
     double axisZ = 1.0;
     bool motor = true;
+    VisualSpec visual;
+};
+
+struct ExtraVisual {
+    std::string name = "extra";
+    double offsetX = 0.0;
+    double offsetY = 0.0;
+    double offsetZ = 0.0;
+    VisualSpec visual;
 };
 
 struct RobotConfig {
@@ -78,9 +91,12 @@ struct RobotConfig {
     double spawnY = 0.18;
     double spawnZ = 0.0;
 
+    VisualSpec chassisVisual;
+
     std::vector<WheelSpec> wheels;
     std::vector<CasterSpec> casters;
     std::vector<LinkSpec> links;
+    std::vector<ExtraVisual> extras;
 };
 
 class Robot {

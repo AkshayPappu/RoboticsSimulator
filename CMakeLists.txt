@@ -22,7 +22,18 @@ set(Eigen3_DIR "C:/msys64/ucrt64/share/eigen3/cmake" CACHE PATH "Eigen3 cmake di
 set(Irrlicht_INCLUDE_DIR "C:/msys64/ucrt64/include/irrlicht" CACHE PATH "Irrlicht include dir" FORCE)
 set(Irrlicht_LIBRARY "C:/msys64/ucrt64/lib/libirrlicht.dll.a" CACHE PATH "Irrlicht library" FORCE)
 
-# Project Chrono
+# Main app stays on Irrlicht. Isolated vsg_smoke can be built to test Arc A370M.
+set(vsg_DIR "C:/msys64/ucrt64/lib/cmake/vsg" CACHE PATH "vsg cmake dir")
+set(vsgImGui_DIR "C:/msys64/ucrt64/lib/cmake/vsgImGui" CACHE PATH "vsgImGui cmake dir")
+set(vsgXchange_DIR "C:/msys64/ucrt64/lib/cmake/vsgXchange" CACHE PATH "vsgXchange cmake dir")
+set(glslang_DIR "C:/msys64/ucrt64/lib/cmake/glslang" CACHE PATH "glslang cmake dir")
+set(SPIRV-Tools_DIR "C:/msys64/ucrt64/lib/cmake/SPIRV-Tools" CACHE PATH "SPIRV-Tools cmake dir")
+set(SPIRV-Tools-opt_DIR "C:/msys64/ucrt64/lib/cmake/SPIRV-Tools-opt" CACHE PATH "SPIRV-Tools-opt cmake dir")
+# ChronoTargets always references vsg::vsg, so import those packages first.
+find_package(vsg CONFIG QUIET)
+find_package(vsgImGui CONFIG QUIET)
+find_package(vsgXchange CONFIG QUIET)
+
 find_package(Chrono
     COMPONENTS Irrlicht
     CONFIG
@@ -30,6 +41,9 @@ find_package(Chrono
 )
 
 if(Chrono_FOUND)
+    if(NOT EXISTS "${CHRONO_DATA_DIR}/textures/concrete.jpg")
+        set(CHRONO_DATA_DIR "C:/msys64/ucrt64/share/chrono/data/")
+    endif()
     message(STATUS "Chrono found: targets = ${CHRONO_TARGETS}")
     message(STATUS "Chrono data dir: ${CHRONO_DATA_DIR}")
 else()
@@ -56,7 +70,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(imgui)
 
-# Build ImGui as a library with OpenGL3 backend
 set(IMGUI_DIR ${imgui_SOURCE_DIR})
 add_library(imgui STATIC
     ${IMGUI_DIR}/imgui.cpp
@@ -71,7 +84,6 @@ target_include_directories(imgui PUBLIC
     ${IMGUI_DIR}/backends
 )
 
-# ImGuizmo for 3D gizmos — download single file
 set(IMGUIZMO_DIR ${CMAKE_BINARY_DIR}/imguizmo)
 file(MAKE_DIRECTORY ${IMGUIZMO_DIR})
 
@@ -103,11 +115,13 @@ set(SIMULATOR_SOURCES
     src/core/Telemetry.cpp
     src/physics/ChronoEngine.cpp
     src/physics/RigidBody.cpp
+    src/physics/Assets.cpp
     src/robotics/Robot.cpp
     src/robotics/Joint.cpp
     src/robotics/Motor.cpp
     src/robotics/Controller.cpp
     src/robotics/Sensor.cpp
+    src/robotics/PartCatalog.cpp
     src/environment/Terrain.cpp
     src/environment/SceneLoader.cpp
     src/rendering/Renderer.cpp
@@ -121,15 +135,24 @@ set(SIMULATOR_HEADERS
     include/core/Telemetry.h
     include/physics/ChronoEngine.h
     include/physics/RigidBody.h
+    include/physics/Assets.h
     include/robotics/Robot.h
     include/robotics/Joint.h
     include/robotics/Motor.h
     include/robotics/Controller.h
     include/robotics/Sensor.h
+    include/robotics/PartCatalog.h
     include/environment/Terrain.h
     include/environment/SceneLoader.h
     include/rendering/Renderer.h
     include/rendering/EditorUI.h
+)
+
+set(SIM_COMPILE_DEFS
+    "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
+    "SIM_SCENES_DIR=\"${CMAKE_SOURCE_DIR}/scenes\""
+    "SIM_ROBOTS_DIR=\"${CMAKE_SOURCE_DIR}/robots\""
+    "SIM_ASSETS_DIR=\"${CMAKE_SOURCE_DIR}/assets\""
 )
 
 # ----------------------------------------------------------------------------
@@ -141,11 +164,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/include
 )
 
-target_compile_definitions(${PROJECT_NAME} PRIVATE
-    "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
-    "SIM_SCENES_DIR=\"${CMAKE_SOURCE_DIR}/scenes\""
-    "SIM_ROBOTS_DIR=\"${CMAKE_SOURCE_DIR}/robots\""
-)
+target_compile_definitions(${PROJECT_NAME} PRIVATE ${SIM_COMPILE_DEFS})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     ${CHRONO_TARGETS}
@@ -158,6 +177,17 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 # Copy Chrono DLLs to output directory on Windows
 if(WIN32 AND CHRONO_DLL_NAMES)
     add_CHRONO_DLLS_copy_command()
+endif()
+
+option(BUILD_VSG_SMOKE "Build isolated Chrono::VSG window test" ON)
+if(BUILD_VSG_SMOKE)
+    find_package(Vulkan QUIET)
+    if(NOT Vulkan_FOUND)
+        set(Vulkan_INCLUDE_DIR "C:/msys64/ucrt64/include" CACHE PATH "Vulkan headers" FORCE)
+    endif()
+    add_executable(vsg_smoke src/vsg_smoke.cpp)
+    target_compile_definitions(vsg_smoke PRIVATE "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\"")
+    target_link_libraries(vsg_smoke PRIVATE Chrono::Chrono_core Chrono::Chrono_vsg)
 endif()
 
 # ----------------------------------------------------------------------------
@@ -179,11 +209,13 @@ if(BUILD_PYTHON_BINDINGS)
         src/core/Telemetry.cpp
         src/physics/ChronoEngine.cpp
         src/physics/RigidBody.cpp
+        src/physics/Assets.cpp
         src/robotics/Robot.cpp
         src/robotics/Joint.cpp
         src/robotics/Motor.cpp
         src/robotics/Controller.cpp
         src/robotics/Sensor.cpp
+        src/robotics/PartCatalog.cpp
         src/environment/Terrain.cpp
         src/environment/SceneLoader.cpp
         src/rendering/Renderer.cpp
@@ -192,11 +224,7 @@ if(BUILD_PYTHON_BINDINGS)
 
     pybind11_add_module(robosim src/bindings/PySimBridge.cpp ${SIM_BINDING_SOURCES})
     target_include_directories(robosim PRIVATE ${CMAKE_SOURCE_DIR}/include)
-    target_compile_definitions(robosim PRIVATE
-        "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
-        "SIM_SCENES_DIR=\"${CMAKE_SOURCE_DIR}/scenes\""
-        "SIM_ROBOTS_DIR=\"${CMAKE_SOURCE_DIR}/robots\""
-    )
+    target_compile_definitions(robosim PRIVATE ${SIM_COMPILE_DEFS})
     target_link_libraries(robosim PRIVATE
         ${CHRONO_TARGETS}
         nlohmann_json::nlohmann_json

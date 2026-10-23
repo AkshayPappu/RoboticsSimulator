@@ -61,6 +61,9 @@ public:
 
     bool IsKeyPressed(int key) const;
 
+    bool GetCameraLook(double& ex, double& ey, double& ez,
+                       double& tx, double& ty, double& tz) const;
+
     std::shared_ptr<chrono::irrlicht::ChVisualSystemIrrlicht> GetVisualSystem() {
         return m_vis;
     }

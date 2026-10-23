@@ -10,7 +10,6 @@ FetchContent_Declare(
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
-# Shared test source dependencies (all src files except main.cpp)
 set(SIM_LIB_SOURCES
     ${CMAKE_SOURCE_DIR}/src/core/Simulation.cpp
     ${CMAKE_SOURCE_DIR}/src/core/PhysicsWorld.cpp
@@ -18,52 +17,39 @@ set(SIM_LIB_SOURCES
     ${CMAKE_SOURCE_DIR}/src/core/Telemetry.cpp
     ${CMAKE_SOURCE_DIR}/src/physics/ChronoEngine.cpp
     ${CMAKE_SOURCE_DIR}/src/physics/RigidBody.cpp
+    ${CMAKE_SOURCE_DIR}/src/physics/Assets.cpp
     ${CMAKE_SOURCE_DIR}/src/robotics/Robot.cpp
     ${CMAKE_SOURCE_DIR}/src/robotics/Joint.cpp
     ${CMAKE_SOURCE_DIR}/src/robotics/Motor.cpp
     ${CMAKE_SOURCE_DIR}/src/robotics/Controller.cpp
     ${CMAKE_SOURCE_DIR}/src/robotics/Sensor.cpp
+    ${CMAKE_SOURCE_DIR}/src/robotics/PartCatalog.cpp
     ${CMAKE_SOURCE_DIR}/src/environment/Terrain.cpp
     ${CMAKE_SOURCE_DIR}/src/environment/SceneLoader.cpp
     ${CMAKE_SOURCE_DIR}/src/rendering/Renderer.cpp
     ${CMAKE_SOURCE_DIR}/src/rendering/EditorUI.cpp
 )
 
-# --- Physics Tests ---
-add_executable(test_physics test_physics.cpp ${SIM_LIB_SOURCES})
-target_include_directories(test_physics PRIVATE ${CMAKE_SOURCE_DIR}/include)
-target_link_libraries(test_physics PRIVATE
-    GTest::gtest_main
-    ${CHRONO_TARGETS}
-    nlohmann_json::nlohmann_json
-    imgui
-    imguizmo_lib
-    opengl32
-)
-add_test(NAME PhysicsTests COMMAND test_physics)
+function(add_sim_test name src)
+    add_executable(${name} ${src} ${SIM_LIB_SOURCES})
+    target_include_directories(${name} PRIVATE ${CMAKE_SOURCE_DIR}/include)
+    target_compile_definitions(${name} PRIVATE
+        "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
+        "SIM_SCENES_DIR=\"${CMAKE_SOURCE_DIR}/scenes\""
+        "SIM_ROBOTS_DIR=\"${CMAKE_SOURCE_DIR}/robots\""
+        "SIM_ASSETS_DIR=\"${CMAKE_SOURCE_DIR}/assets\""
+    )
+    target_link_libraries(${name} PRIVATE
+        GTest::gtest_main
+        ${CHRONO_TARGETS}
+        nlohmann_json::nlohmann_json
+        imgui
+        imguizmo_lib
+        opengl32
+    )
+    add_test(NAME ${name} COMMAND ${name})
+endfunction()
 
-# --- Robot Tests ---
-add_executable(test_robot test_robot.cpp ${SIM_LIB_SOURCES})
-target_include_directories(test_robot PRIVATE ${CMAKE_SOURCE_DIR}/include)
-target_link_libraries(test_robot PRIVATE
-    GTest::gtest_main
-    ${CHRONO_TARGETS}
-    nlohmann_json::nlohmann_json
-    imgui
-    imguizmo_lib
-    opengl32
-)
-add_test(NAME RobotTests COMMAND test_robot)
-
-# --- Scene Loader Tests ---
-add_executable(test_scene_loader test_scene_loader.cpp ${SIM_LIB_SOURCES})
-target_include_directories(test_scene_loader PRIVATE ${CMAKE_SOURCE_DIR}/include)
-target_link_libraries(test_scene_loader PRIVATE
-    GTest::gtest_main
-    ${CHRONO_TARGETS}
-    nlohmann_json::nlohmann_json
-    imgui
-    imguizmo_lib
-    opengl32
-)
-add_test(NAME SceneLoaderTests COMMAND test_scene_loader)
+add_sim_test(test_physics test_physics.cpp)
+add_sim_test(test_robot test_robot.cpp)
+add_sim_test(test_scene_loader test_scene_loader.cpp)

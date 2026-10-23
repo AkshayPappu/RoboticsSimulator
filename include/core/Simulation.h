@@ -58,6 +58,7 @@ public:
     PhysicsWorld& GetWorld() { return *m_world; }
     const PhysicsWorld& GetWorld() const { return *m_world; }
 
+    Renderer* TryGetRenderer() { return m_renderer.get(); }
     Renderer& GetRenderer() { return *m_renderer; }
     SceneManager& GetSceneManager() { return *m_sceneManager; }
     EditorUI* GetEditorUI() { return m_editorUI.get(); }

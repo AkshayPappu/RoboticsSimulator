@@ -1,9 +1,11 @@
 #include "robotics/Robot.h"
 #include "core/PhysicsWorld.h"
 #include "physics/RigidBody.h"
+#include "physics/Assets.h"
 #include "robotics/Joint.h"
 #include "robotics/Motor.h"
 #include "robotics/Sensor.h"
+#include "robotics/PartCatalog.h"
 
 #include <chrono/physics/ChLinkBase.h>
 #include <chrono/assets/ChVisualShapeBox.h>
@@ -15,6 +17,76 @@
 using json = nlohmann::json;
 
 namespace robosim {
+
+static VisualSpec ParseVisual(const json& obj) {
+    VisualSpec spec;
+    if (!obj.contains("visual") || !obj["visual"].is_object()) {
+        return spec;
+    }
+    const auto& v = obj["visual"];
+    spec.mesh = v.value("mesh", std::string());
+    spec.texture = v.value("texture", std::string());
+    spec.metallic = v.value("metallic", spec.metallic);
+    spec.roughness = v.value("roughness", spec.roughness);
+    if (v.contains("color") && v["color"].is_array() && v["color"].size() >= 3) {
+        spec.colorR = v["color"][0].get<float>();
+        spec.colorG = v["color"][1].get<float>();
+        spec.colorB = v["color"][2].get<float>();
+    }
+    if (v.contains("scale")) {
+        if (v["scale"].is_array() && v["scale"].size() >= 3) {
+            spec.scaleX = v["scale"][0].get<double>();
+            spec.scaleY = v["scale"][1].get<double>();
+            spec.scaleZ = v["scale"][2].get<double>();
+        } else if (v["scale"].is_number()) {
+            spec.scaleX = spec.scaleY = spec.scaleZ = v["scale"].get<double>();
+        }
+    }
+    if (v.contains("offset") && v["offset"].is_array() && v["offset"].size() >= 3) {
+        spec.offsetX = v["offset"][0].get<double>();
+        spec.offsetY = v["offset"][1].get<double>();
+        spec.offsetZ = v["offset"][2].get<double>();
+    }
+    return spec;
+}
+
+static json VisualToJson(const VisualSpec& spec) {
+    if (!spec.HasMesh() && !spec.HasTexture()) {
+        return json();
+    }
+    json v;
+    if (spec.HasMesh()) v["mesh"] = spec.mesh;
+    if (spec.HasTexture()) v["texture"] = spec.texture;
+    if (spec.scaleX != 1.0 || spec.scaleY != 1.0 || spec.scaleZ != 1.0) {
+        if (spec.scaleX == spec.scaleY && spec.scaleY == spec.scaleZ) {
+            v["scale"] = spec.scaleX;
+        } else {
+            v["scale"] = {spec.scaleX, spec.scaleY, spec.scaleZ};
+        }
+    }
+    if (spec.colorR >= 0.0f) {
+        v["color"] = {spec.colorR, spec.colorG, spec.colorB};
+    }
+    if (spec.metallic >= 0.0f) v["metallic"] = spec.metallic;
+    if (spec.roughness >= 0.0f) v["roughness"] = spec.roughness;
+    if (spec.offsetX != 0.0 || spec.offsetY != 0.0 || spec.offsetZ != 0.0) {
+        v["offset"] = {spec.offsetX, spec.offsetY, spec.offsetZ};
+    }
+    return v;
+}
+
+static void ApplyOrDefault(const std::shared_ptr<RigidBody>& body, const VisualSpec& spec,
+                           const std::string& fallbackMesh, float metallic, float roughness) {
+    if (!body) return;
+    VisualSpec use = spec;
+    if (!use.HasMesh() && !fallbackMesh.empty()) {
+        use.mesh = fallbackMesh;
+    }
+    if (use.HasMesh() || use.HasTexture()) {
+        body->ApplyVisual(use, true);
+    }
+    body->SetPbr(metallic, roughness);
+}
 
 Robot::Robot() = default;
 Robot::~Robot() = default;
@@ -69,6 +141,7 @@ void Robot::AttachWheelsAndCasters(PhysicsWorld& world) {
         auto wheel = RigidBody::CreateCylinder(spec.radius, spec.width, spec.mass, t, wheelMat);
         wheel->SetName(spec.name);
         wheel->SetColor(0.08f, 0.08f, 0.08f);
+        ApplyOrDefault(wheel, spec.visual, "parts/turtlebot3/left_tire.obj", 0.05f, 0.85f);
         wheel->SetCollisionFamily(kRobotFamily, false);
         world.AddBody(wheel);
         m_wheels.push_back(wheel);
@@ -97,6 +170,7 @@ void Robot::AttachWheelsAndCasters(PhysicsWorld& world) {
         auto caster = RigidBody::CreateSphere(spec.radius, spec.mass, t, casterMat);
         caster->SetName(spec.name);
         caster->SetColor(0.55f, 0.55f, 0.58f);
+        ApplyOrDefault(caster, spec.visual, "parts/wheel_caster.obj", 0.4f, 0.45f);
         caster->SetCollisionFamily(kRobotFamily, false);
         world.AddBody(caster);
         m_casters.push_back(caster);
@@ -138,6 +212,10 @@ void Robot::AttachLinks(PhysicsWorld& world) {
         }
         linkBody->SetName(spec.name);
         linkBody->SetColor(0.75f, 0.70f, 0.25f);
+        std::string fallback = (spec.geometry == "sphere") ? "parts/gripper.obj" : "parts/arm_link_a.obj";
+        if (spec.name.find("elbow") != std::string::npos) fallback = "parts/arm_link_b.obj";
+        if (spec.name.find("grip") != std::string::npos) fallback = "parts/gripper.obj";
+        ApplyOrDefault(linkBody, spec.visual, fallback, 0.45f, 0.35f);
         linkBody->SetCollisionFamily(1, false);
         world.AddBody(linkBody);
         m_links.push_back(linkBody);
@@ -198,12 +276,34 @@ void Robot::Build(PhysicsWorld& world, const RobotConfig& config) {
     m_chassis->SetColor(0.20f, 0.45f, 0.85f);
     m_chassis->SetCollisionFamily(1, false);
 
-    // Nose: shows which way is forward so WASD direction is obvious
-    auto nose = chrono_types::make_shared<chrono::ChVisualShapeBox>(
-        m_config.chassisSizeX * 0.28, m_config.chassisSizeY * 0.45, m_config.chassisSizeZ * 0.35);
-    nose->SetColor(chrono::ChColor(0.95f, 0.75f, 0.15f));
-    m_chassis->GetChBody()->AddVisualShape(
-        nose, chrono::ChFramed(chrono::ChVector3d(m_config.chassisSizeX * 0.38, m_config.chassisSizeY * 0.35, 0)));
+    if (m_config.chassisVisual.HasMesh()) {
+        ApplyOrDefault(m_chassis, m_config.chassisVisual, {}, 0.35f, 0.40f);
+    } else {
+        std::string fallback = "parts/turtlebot3/burger_base.obj";
+        if (m_config.chassisSizeX >= 0.55) fallback = "parts/chassis_large.obj";
+        else if (m_config.chassisSizeX <= 0.38) fallback = "parts/chassis_small.obj";
+        if (m_config.links.size() >= 2 && m_config.wheels.empty()) fallback = "parts/chassis_arm.obj";
+        ApplyOrDefault(m_chassis, m_config.chassisVisual, fallback, 0.35f, 0.40f);
+    }
+
+    if (!m_config.chassisVisual.HasMesh()) {
+        // Nose: shows which way is forward so WASD direction is obvious
+        auto nose = chrono_types::make_shared<chrono::ChVisualShapeBox>(
+            m_config.chassisSizeX * 0.28, m_config.chassisSizeY * 0.45, m_config.chassisSizeZ * 0.35);
+        nose->SetColor(chrono::ChColor(0.95f, 0.75f, 0.15f));
+        m_chassis->GetChBody()->AddVisualShape(
+            nose, chrono::ChFramed(chrono::ChVector3d(m_config.chassisSizeX * 0.38, m_config.chassisSizeY * 0.35, 0)));
+    }
+
+    for (const auto& extra : m_config.extras) {
+        VisualSpec vis = extra.visual;
+        vis.offsetX += extra.offsetX;
+        vis.offsetY += extra.offsetY;
+        vis.offsetZ += extra.offsetZ;
+        if (vis.HasMesh()) {
+            m_chassis->ApplyVisual(vis, false);
+        }
+    }
 
     world.AddBody(m_chassis);
 
@@ -235,6 +335,22 @@ void Robot::BuildFromJson(PhysicsWorld& world, const std::string& jsonPath) {
         return;
     }
 
+    std::vector<AssemblyItem> assembly;
+    if (PartCatalog::ParseAssembly(j, assembly)) {
+        auto& catalog = PartCatalog::Instance();
+        if (!catalog.IsLoaded()) {
+            catalog.Load();
+        }
+        json composed = PartCatalog::AssemblyToRobotJson(assembly, catalog, j.value("name", std::string("assembled")));
+        composed["max_motor_speed"] = j.value("max_motor_speed", composed.value("max_motor_speed", 10.0));
+        composed["max_torque"] = j.value("max_torque", composed.value("max_torque", 5.0));
+        composed["spawn_x"] = j.value("spawn_x", 0.0);
+        composed["spawn_y"] = j.value("spawn_y", 0.18);
+        composed["spawn_z"] = j.value("spawn_z", 0.0);
+        composed.erase("assembly");
+        j = composed;
+    }
+
     RobotConfig cfg;
     cfg.name = j.value("name", std::string("robot"));
     cfg.maxMotorSpeed = j.value("max_motor_speed", 10.0);
@@ -251,6 +367,7 @@ void Robot::BuildFromJson(PhysicsWorld& world, const std::string& jsonPath) {
             cfg.chassisSizeZ = c["size"][2].get<double>();
         }
         cfg.chassisMass = c.value("mass", cfg.chassisMass);
+        cfg.chassisVisual = ParseVisual(c);
     }
 
     if (j.contains("wheels") && j["wheels"].is_array()) {
@@ -266,6 +383,7 @@ void Robot::BuildFromJson(PhysicsWorld& world, const std::string& jsonPath) {
                 spec.offsetY = w["offset"][1].get<double>();
                 spec.offsetZ = w["offset"][2].get<double>();
             }
+            spec.visual = ParseVisual(w);
             cfg.wheels.push_back(spec);
         }
         if (cfg.wheels.empty()) {
@@ -283,6 +401,7 @@ void Robot::BuildFromJson(PhysicsWorld& world, const std::string& jsonPath) {
                 spec.offsetY = c["offset"][1].get<double>();
                 spec.offsetZ = c["offset"][2].get<double>();
             }
+            spec.visual = ParseVisual(c);
             cfg.casters.push_back(spec);
         }
         if (cfg.casters.empty()) {
@@ -317,7 +436,22 @@ void Robot::BuildFromJson(PhysicsWorld& world, const std::string& jsonPath) {
                 spec.axisY = l["axis"][1].get<double>();
                 spec.axisZ = l["axis"][2].get<double>();
             }
+            spec.visual = ParseVisual(l);
             cfg.links.push_back(spec);
+        }
+    }
+
+    if (j.contains("extras") && j["extras"].is_array()) {
+        for (const auto& e : j["extras"]) {
+            ExtraVisual extra;
+            extra.name = e.value("name", std::string("extra"));
+            extra.visual = ParseVisual(e);
+            if (e.contains("offset") && e["offset"].is_array() && e["offset"].size() >= 3) {
+                extra.offsetX = e["offset"][0].get<double>();
+                extra.offsetY = e["offset"][1].get<double>();
+                extra.offsetZ = e["offset"][2].get<double>();
+            }
+            cfg.extras.push_back(extra);
         }
     }
 
@@ -340,30 +474,37 @@ nlohmann::json Robot::ToJson() const {
         {"size", {m_config.chassisSizeX, m_config.chassisSizeY, m_config.chassisSizeZ}},
         {"mass", m_config.chassisMass}
     };
+    if (auto v = VisualToJson(m_config.chassisVisual); !v.is_null()) {
+        j["chassis"]["visual"] = v;
+    }
     j["max_motor_speed"] = m_config.maxMotorSpeed;
     j["max_torque"] = m_config.maxTorque;
     j["wheels"] = json::array();
     for (const auto& w : m_config.wheels) {
-        j["wheels"].push_back({
+        json wj = {
             {"side", w.name},
             {"radius", w.radius},
             {"width", w.width},
             {"mass", w.mass},
             {"offset", {w.offsetX, w.offsetY, w.offsetZ}},
             {"motor", w.motor}
-        });
+        };
+        if (auto v = VisualToJson(w.visual); !v.is_null()) wj["visual"] = v;
+        j["wheels"].push_back(wj);
     }
     j["casters"] = json::array();
     for (const auto& c : m_config.casters) {
-        j["casters"].push_back({
+        json cj = {
             {"radius", c.radius},
             {"mass", c.mass},
             {"offset", {c.offsetX, c.offsetY, c.offsetZ}}
-        });
+        };
+        if (auto v = VisualToJson(c.visual); !v.is_null()) cj["visual"] = v;
+        j["casters"].push_back(cj);
     }
     j["links"] = json::array();
     for (const auto& l : m_config.links) {
-        j["links"].push_back({
+        json lj = {
             {"name", l.name},
             {"parent", l.parent},
             {"joint", l.jointType},
@@ -373,7 +514,18 @@ nlohmann::json Robot::ToJson() const {
             {"offset", {l.offsetX, l.offsetY, l.offsetZ}},
             {"axis", {l.axisX, l.axisY, l.axisZ}},
             {"motor", l.motor}
-        });
+        };
+        if (auto v = VisualToJson(l.visual); !v.is_null()) lj["visual"] = v;
+        j["links"].push_back(lj);
+    }
+    j["extras"] = json::array();
+    for (const auto& e : m_config.extras) {
+        json ej = {
+            {"name", e.name},
+            {"offset", {e.offsetX, e.offsetY, e.offsetZ}}
+        };
+        if (auto v = VisualToJson(e.visual); !v.is_null()) ej["visual"] = v;
+        j["extras"].push_back(ej);
     }
     return j;
 }

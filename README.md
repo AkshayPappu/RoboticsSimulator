@@ -1,101 +1,94 @@
-# AI-Powered Robotics Physics Simulator
+# Robotics Simulator
 
-A C++ robotics simulation platform powered by Project Chrono. Design robots, generate environments, simulate realistic physics, and train AI agents to control robots.
+Chrono physics, JSON robots, and a live window. Headless and JSON stay first-class; the window is not the product API.
 
-## Prerequisites
+**Pick this up on the NVIDIA gaming laptop.** Chrono::VSG is the next look step. It does not run on the Intel laptop this repo was last built on.
 
-- **C++ Compiler** with C++20 support (MSVC 2022+, GCC 12+, Clang 14+)
-- **CMake** 3.20 or later
-- **Project Chrono** 9.0+ with Irrlicht module
+## Current status (2026-10-23)
 
-### Installing Project Chrono on Windows
+Done and in this tree:
 
-1. Clone and build Chrono:
-   ```powershell
-   git clone https://github.com/projectchrono/chrono.git
-   cd chrono
-   mkdir build && cd build
-   cmake .. -G "Visual Studio 17 2022" -A x64 ^
-       -DCMAKE_INSTALL_PREFIX=C:/chrono-install ^
-       -DENABLE_MODULE_IRRLICHT=ON ^
-       -DIRRLICHT_ROOT=C:/path/to/irrlicht
-   cmake --build . --config Release
-   cmake --install . --config Release
-   ```
+- Chrono 10 physics, WASD / arrow driving, menu spawn
+- Visual mesh vs collision hull split (`ChVisualShapeTriangleMesh` / OBJ, box-cylinder-sphere hulls)
+- Part catalog + click-to-snap assembler (`assets/parts/catalog.json`, Assemble tab)
+- Licensed **TurtleBot3 Burger** visuals on DiffDrive (`assets/parts/turtlebot3/`, Apache-2.0)
+- Irrlicht window works (`run.bat`)
 
-2. Download [Irrlicht SDK](http://irrlicht.sourceforge.net/) and extract it. Point `IRRLICHT_ROOT` to the extracted directory.
+Not done / blocked:
 
-### Installing Project Chrono on Linux
+- **Chrono::VSG** (PBR lighting, sky, materials). Required for the look to jump from silhouette to real.
+- On the Intel laptop: `ChVisualSystemVSG::Initialize()` access-violates (`0xC0000005`) on **both** Iris Xe (GPU0) and Arc A370M (forced discrete ICD). `vulkaninfo` works; a tiny `vsg_smoke` still dies in `Initialize()`.
+- Four-wheel and arm still use the generated kit, not TB3/OpenManipulator.
+- MCP / chatbot later. Do not start that until VSG is a working window.
 
-```bash
-sudo apt install libirrlicht-dev
-git clone https://github.com/projectchrono/chrono.git
-cd chrono && mkdir build && cd build
-cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local \
-    -DENABLE_MODULE_IRRLICHT=ON
-make -j$(nproc)
-sudo make install
+## Continue on the NVIDIA laptop
+
+1. Clone / pull `main` (this commit).
+2. Install the MSYS2 ucrt64 toolchain below (same as this machine).
+3. Build and confirm Irrlicht: `run.bat` — robot should drive, Burger silhouette visible.
+4. **First VSG action:** `run_vsg_smoke.bat` (or `build\vsg_smoke.exe` with MSYS PATH).
+   - Success: you see `Initialize returned` and `ok frames=...`, and a window stays open.
+   - Then swap only `src/rendering/Renderer.cpp` from `ChVisualSystemIrrlicht` to `chrono::vsg3d::ChVisualSystemVSG`. Physics, JSON, catalog, WASD stay as they are. Port keys with `ChEventHandlerVSG`.
+   - Failure: same `0xC0000005` means the NVIDIA Vulkan driver or Chrono data path is wrong; fix that before touching the main app.
+5. Do not turn the main exe to VSG until smoke survives.
+
+Force-Arc notes (`run_vsg_smoke.bat` sets `VK_DRIVER_FILES` to the Intel discrete ICD) are **only for the Intel hybrid laptop**. On NVIDIA, either delete those env vars or ignore the bat and run `vsg_smoke.exe` with Chrono’s `VSG_FILE_PATH` set to `C:\msys64\ucrt64\share\chrono\data\vsg`.
+
+## Toolchain (Windows, what actually builds here)
+
+MSYS2 **ucrt64**, MinGW Makefiles, Chrono 10 from pacman:
+
+```bat
+pacman -S --needed mingw-w64-ucrt-x86_64-toolchain mingw-w64-ucrt-x86_64-cmake ^
+  mingw-w64-ucrt-x86_64-projectchrono mingw-w64-ucrt-x86_64-vulkan-headers
 ```
 
-## Building
+Chrono’s MSYS package already has Irrlicht and VSG. Vulkan headers are required to **configure** VSG targets.
 
-```bash
-mkdir build && cd build
-cmake .. -DChrono_DIR=/path/to/chrono-install/lib/cmake/Chrono
-cmake --build . --config Release
+```bat
+set PATH=C:\msys64\ucrt64\bin;C:\msys64\usr\bin;%PATH%
+cmake -S . -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
+cmake --build build --target RoboticsSimulator vsg_smoke -j 8
 ```
 
-On Windows with Visual Studio:
-```powershell
-mkdir build; cd build
-cmake .. -G "Visual Studio 17 2022" -A x64 -DChrono_DIR=C:/chrono-install/lib/cmake/Chrono
-cmake --build . --config Release
+`CMakeLists.txt` overrides a broken `CHRONO_DATA_DIR` to `C:/msys64/ucrt64/share/chrono/data/` when the cmake prefix path does not exist.
+
+```bat
+run.bat
 ```
 
-## Running
-
-```bash
-./build/RoboticsSimulator
+```bat
+RoboticsSimulator.exe --headless --robot robots/differential_drive.json --steps 200
 ```
 
-### Command-line options (Phase 6+)
-
 ```
---headless          Run without visualization
---scene <path>      Load a scene JSON file
---robot <path>      Load a robot JSON file
---steps <n>         Run for n physics steps then exit
---output <path>     Write telemetry to file
+--headless          No window
+--scene <path>      Scene JSON
+--robot <path>      Robot JSON
+--steps <n>         Step n times then exit
+--output <path>     Telemetry
 ```
 
-## Project Structure
+Tests: `build\tests\test_robot.exe` (after `cmake --build build --target test_robot`).
+
+## Layout
 
 ```
-├── CMakeLists.txt          Root build configuration
-├── cmake/                  CMake modules (FindChrono)
-├── src/                    Source files
-│   ├── core/               Simulation loop, physics world, scene manager
-│   ├── physics/            Chrono engine wrapper, rigid body abstraction
-│   ├── robotics/           Robot, joint, motor, controller
-│   ├── environment/        Terrain, scene loader
-│   ├── rendering/          Visualization (Irrlicht/ImGui)
-│   └── main.cpp            Entry point
-├── include/                Header files (mirrors src/ layout)
-├── scenes/                 JSON scene definitions
-├── robots/                 JSON robot definitions
-├── python/                 Python AI/RL scripts
-└── tests/                  Unit tests (GoogleTest)
+assets/parts/           Generated kit + catalog.json
+assets/parts/turtlebot3/  Burger base, tires, LDS (Apache-2.0)
+assets/textures/        Procedural albedos
+robots/                 DiffDrive (TB3 visuals), four_wheel, robot_arm, assembled_diff
+scripts/                generate_parts.py, import_turtlebot3.py
+src/rendering/          Irrlicht window + ImGui editor (VSG is next)
+src/vsg_smoke.cpp       Isolated Chrono::VSG Initialize() test
 ```
 
-## Development Phases
+## Assets / license
 
-1. **Chrono Integration** - Physics sandbox with falling objects
-2. **Robot Simulation** - Differential-drive robot with keyboard control
-3. **Environment System** - JSON-defined scenes and terrain
-4. **Interactive Editor** - ImGui-based 3D editor
-5. **AI Integration** - RL training and LLM scene generation
-6. **Testing & Optimization** - Telemetry, benchmarks, reproducibility
+Repo code is MIT. Generated meshes and noise textures are original. TurtleBot3 Burger files are ROBOTIS, Apache-2.0 — see `assets/LICENSE` and `assets/parts/turtlebot3/`. Do not scrape Sketchfab.
 
-## License
+## What not to do on pickup
 
-MIT
+- Do not switch the product to Unity/Unreal.
+- Do not treat VSG as the API; `--headless` and JSON stay.
+- Do not jump to MCP until catalog + a working vis window exist (catalog is done; vis window on NVIDIA is VSG).

@@ -1,0 +1,28 @@
+newmtl paint
+Kd 0.450 0.480 0.520
+Ka 0.15 0.15 0.15
+Ks 0.25 0.25 0.25
+Ns 40
+map_Kd ../textures/aluminum.png
+
+newmtl deck
+Kd 0.220 0.400 0.700
+Ka 0.15 0.15 0.15
+Ks 0.25 0.25 0.25
+Ns 40
+map_Kd ../textures/paint_blue.png
+
+newmtl nose
+Kd 0.850 0.700 0.200
+Ka 0.15 0.15 0.15
+Ks 0.25 0.25 0.25
+Ns 40
+map_Kd ../textures/paint_yellow.png
+
+newmtl metal
+Kd 0.600 0.620 0.660
+Ka 0.15 0.15 0.15
+Ks 0.25 0.25 0.25
+Ns 40
+map_Kd ../textures/aluminum.png
+

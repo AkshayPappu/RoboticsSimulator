@@ -1,0 +1,20 @@
+TurtleBot3 Burger visual meshes
+================================
+
+Source: ROBOTIS-GIT/turtlebot3 (turtlebot3_description)
+https://github.com/ROBOTIS-GIT/turtlebot3
+License: Apache License 2.0 (see LICENSE in this directory)
+
+Files used:
+  meshes/bases/burger_base.stl
+  meshes/wheels/left_tire.stl
+  meshes/wheels/right_tire.stl
+  meshes/sensors/lds.stl
+
+Modifications for RoboticsSimulator:
+  - scaled millimeters to meters
+  - converted ROS Z-up chassis/lidar to Chrono Y-up
+  - centered each mesh on its AABB
+  - uniformly scaled visuals to the existing DiffDrive hulls
+    (chassis 0.5 x 0.15 x 0.3, wheel radius 0.1)
+Collision / mass / mount frames are unchanged and stay in catalog.json.

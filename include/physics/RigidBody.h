@@ -1,5 +1,7 @@
 #pragma once
 
+#include "physics/Assets.h"
+
 #include <memory>
 #include <string>
 #include <chrono/physics/ChBody.h>
@@ -92,6 +94,11 @@ public:
 
     void SetColor(float r, float g, float b);
     void SetCollisionFamily(int family, bool collideWithSameFamily = false);
+
+    void AddVisualMesh(const std::string& path, double scale = 1.0,
+                       double ox = 0.0, double oy = 0.0, double oz = 0.0);
+    void ApplyVisual(const VisualSpec& spec, bool replaceDefault = true);
+    void SetPbr(float metallic, float roughness);
 
 private:
     RigidBody() = default;

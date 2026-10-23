@@ -1,0 +1,14 @@
+newmtl rubber
+Kd 0.200 0.200 0.220
+Ka 0.15 0.15 0.15
+Ks 0.25 0.25 0.25
+Ns 40
+map_Kd ../textures/rubber.png
+
+newmtl metal
+Kd 0.550 0.550 0.580
+Ka 0.15 0.15 0.15
+Ks 0.25 0.25 0.25
+Ns 40
+map_Kd ../textures/aluminum.png
+

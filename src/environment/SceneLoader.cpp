@@ -90,6 +90,26 @@ SceneData SceneLoader::Load(const std::string& path) {
                     } else {
                         body->SetColor(0.28f, 0.55f, 0.82f);
                     }
+                    if (obj.contains("visual") && obj["visual"].is_object()) {
+                        VisualSpec vis;
+                        vis.mesh = obj["visual"].value("mesh", std::string());
+                        vis.texture = obj["visual"].value("texture", std::string());
+                        if (obj["visual"].contains("scale") && obj["visual"]["scale"].is_number()) {
+                            vis.scaleX = vis.scaleY = vis.scaleZ = obj["visual"]["scale"].get<double>();
+                        }
+                        body->ApplyVisual(vis, true);
+                    } else if (type == "box" || type == "wall") {
+                        VisualSpec vis;
+                        vis.mesh = "parts/obstacle_crate.obj";
+                        vis.scaleX = size.size() > 0 ? size[0] : 1.0;
+                        vis.scaleY = size.size() > 1 ? size[1] : 1.0;
+                        vis.scaleZ = size.size() > 2 ? size[2] : 1.0;
+                        body->ApplyVisual(vis, true);
+                    } else if (type == "cylinder") {
+                        VisualSpec vis;
+                        vis.mesh = "parts/obstacle_barrel.obj";
+                        body->ApplyVisual(vis, true);
+                    }
                     data.objects.push_back(body);
                 }
             }

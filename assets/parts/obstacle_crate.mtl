@@ -1,0 +1,14 @@
+newmtl wood
+Kd 0.820 0.320 0.220
+Ka 0.15 0.15 0.15
+Ks 0.25 0.25 0.25
+Ns 40
+map_Kd ../textures/wood.png
+
+newmtl metal
+Kd 0.400 0.400 0.420
+Ka 0.15 0.15 0.15
+Ks 0.25 0.25 0.25
+Ns 40
+map_Kd ../textures/aluminum.png
+

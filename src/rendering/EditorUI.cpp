@@ -8,6 +8,7 @@
 #include "robotics/Motor.h"
 #include "robotics/Sensor.h"
 #include "robotics/Controller.h"
+#include "robotics/PartCatalog.h"
 
 #include <fstream>
 #include <functional>
@@ -32,7 +33,16 @@ void EditorUI::Initialize(Simulation& sim) {
     m_sim = &sim;
     m_initialized = true;
 
+    if (!PartCatalog::Instance().IsLoaded()) {
+        PartCatalog::Instance().Load();
+    }
+    m_sim->GetRenderer().SetMouseCallback(
+        [this](int x, int y, bool left, bool right, float wheel) {
+            HandleAssemblerMouse(x, y, left, right, wheel);
+        });
+
     Log("[Editor] Click the 3D window, then drive with W A S D or arrow keys.");
+    Log("[Editor] Robot Builder: pick a catalog part, then click a mount to snap.");
 }
 
 void EditorUI::Render() {
@@ -431,9 +441,16 @@ void EditorUI::RenderConsolePanel() {
 
 void EditorUI::RenderRobotBuilderPanel() {
     ImGui::SetNextWindowPos(ImVec2(300, 100), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(400, 500), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(440, 620), ImGuiCond_FirstUseEver);
 
     ImGui::Begin("Robot Builder", &m_state.showRobotBuilder);
+
+    if (ImGui::BeginTabBar("BuilderTabs")) {
+        if (ImGui::BeginTabItem("Assemble")) {
+            RenderAssemblerPanel();
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("Presets")) {
 
     static float chassisSize[3] = {0.5f, 0.15f, 0.3f};
     static float chassisMass = 5.0f;
@@ -615,6 +632,11 @@ void EditorUI::RenderRobotBuilderPanel() {
         }
     }
 
+            ImGui::EndTabItem();
+        }
+        ImGui::EndTabBar();
+    }
+
     ImGui::End();
 }
 
@@ -633,6 +655,7 @@ void EditorUI::RenderHelpOverlay() {
     ImGui::Text("Click this 3D window, then hold W to drive (yellow nose = forward)");
     ImGui::Text("W/S or Up/Down = forward/back    A/D or Left/Right = turn");
     ImGui::Text("Camera: left-drag orbit, wheel zoom, right-drag pan");
+    ImGui::Text("Assemble: pick a part, then click a mount in the builder or 3D view");
     ImGui::Text("FPS %.0f   t=%.1fs", m_fps, m_sim->GetSimTime());
     ImGui::End();
 }
@@ -652,4 +675,276 @@ void EditorUI::SpawnRobotPreset(const char* fileName) {
     Log(std::string("[Editor] Spawned ") + path);
 }
 
+void EditorUI::HandleAssemblerMouse(int x, int y, bool leftDown, bool rightDown, float wheel) {
+    (void)rightDown;
+    (void)wheel;
+    if (leftDown && m_state.showRobotBuilder && !m_selectedPartId.empty()) {
+        m_pendingClickX = x;
+        m_pendingClickY = y;
+    }
+}
+
+void EditorUI::RebuildFromAssembly() {
+    if (!m_sim) return;
+    auto& catalog = PartCatalog::Instance();
+    if (!catalog.IsLoaded()) catalog.Load();
+
+    auto j = PartCatalog::AssemblyToRobotJson(m_assembly, catalog, "assembled");
+#ifdef SIM_ROBOTS_DIR
+    const std::string tmp = std::string(SIM_ROBOTS_DIR) + "/_assembled_preview.json";
+#else
+    const std::string tmp = "robots/_assembled_preview.json";
+#endif
+    {
+        std::ofstream out(tmp);
+        if (out) out << j.dump(2);
+    }
+    if (m_sim->GetRobot()) {
+        m_sim->GetRobot()->RemoveFromWorld(m_sim->GetWorld());
+    }
+    auto robot = std::make_shared<Robot>();
+    robot->BuildFromJson(m_sim->GetWorld(), tmp);
+    m_sim->SetRobot(robot);
+    m_sim->GetRenderer().BindAll();
+}
+
+void EditorUI::SnapSelectedPart(const std::string& parentId, const std::string& mountId) {
+    if (m_selectedPartId.empty()) {
+        Log("[Editor] Select a catalog part first");
+        return;
+    }
+    auto& catalog = PartCatalog::Instance();
+    const CatalogPart* part = catalog.Find(m_selectedPartId);
+    if (!part) return;
+
+    AssemblyItem item;
+    item.partId = part->id;
+    item.instanceId = part->id + "_" + std::to_string(m_instanceSerial++);
+    item.parentId = parentId;
+    item.mountId = mountId;
+    item.motor = (part->category == "wheel" || part->category == "arm") && part->joint != "fixed";
+
+    if (part->category == "chassis") {
+        item.parentId.clear();
+        item.mountId.clear();
+        if (m_assembly.empty()) {
+            m_assembly.push_back(item);
+        } else {
+            m_assembly.insert(m_assembly.begin(), item);
+        }
+    } else {
+        if (m_assembly.empty()) {
+            Log("[Editor] Place a chassis first");
+            return;
+        }
+        m_assembly.push_back(item);
+    }
+    m_selectedInstanceId = item.instanceId;
+    RebuildFromAssembly();
+    Log("[Editor] Snapped " + part->name + " to " + (mountId.empty() ? "origin" : mountId));
+}
+
+bool EditorUI::TryPickMount(int mx, int my) {
+    if (m_assembly.empty() || !m_sim || !m_sim->GetRobot() || !m_sim->GetRobot()->GetChassis()) {
+        return false;
+    }
+    auto& catalog = PartCatalog::Instance();
+    const CatalogPart* chassisPart = nullptr;
+    std::string chassisInstance;
+    for (const auto& item : m_assembly) {
+        const CatalogPart* p = catalog.Find(item.partId);
+        if (p && p->category == "chassis") {
+            chassisPart = p;
+            chassisInstance = item.instanceId;
+            break;
+        }
+    }
+    if (!chassisPart) return false;
+
+    double ex, ey, ez, tx, ty, tz;
+    if (!m_sim->GetRenderer().GetCameraLook(ex, ey, ez, tx, ty, tz)) return false;
+
+    double fx = tx - ex, fy = ty - ey, fz = tz - ez;
+    double fl = std::sqrt(fx * fx + fy * fy + fz * fz);
+    if (fl < 1e-6) return false;
+    fx /= fl; fy /= fl; fz /= fl;
+    // Y-up camera
+    double rx = fy * 0 - fz * 1.0;
+    double ry = fz * 0 - fx * 0;
+    double rz = fx * 1.0 - fy * 0;
+    double rl = std::sqrt(rx * rx + ry * ry + rz * rz);
+    if (rl < 1e-6) { rx = 1; ry = 0; rz = 0; rl = 1; }
+    rx /= rl; ry /= rl; rz /= rl;
+    double ux = ry * fz - rz * fy;
+    double uy = rz * fx - rx * fz;
+    double uz = rx * fy - ry * fx;
+
+    const double fov = 40.0 * 3.141592653589793 / 180.0;
+    const double tanHalf = std::tan(fov * 0.5);
+    const double aspect = (double)m_sim->GetRenderer().GetWindowWidth() /
+                          std::max(1, m_sim->GetRenderer().GetWindowHeight());
+    const double ndcX = (2.0 * mx / std::max(1, m_sim->GetRenderer().GetWindowWidth())) - 1.0;
+    const double ndcY = 1.0 - (2.0 * my / std::max(1, m_sim->GetRenderer().GetWindowHeight()));
+    double dx = fx + rx * ndcX * tanHalf * aspect + ux * ndcY * tanHalf;
+    double dy = fy + ry * ndcX * tanHalf * aspect + uy * ndcY * tanHalf;
+    double dz = fz + rz * ndcX * tanHalf * aspect + uz * ndcY * tanHalf;
+    double dl = std::sqrt(dx * dx + dy * dy + dz * dz);
+    dx /= dl; dy /= dl; dz /= dl;
+
+    double cx, cy, cz;
+    m_sim->GetRobot()->GetChassis()->GetPosition(cx, cy, cz);
+
+    const MountFrame* best = nullptr;
+    double bestDist = 0.12;
+    for (const auto& mount : chassisPart->mounts) {
+        double px = cx + mount.x;
+        double py = cy + mount.y;
+        double pz = cz + mount.z;
+        double vx = px - ex, vy = py - ey, vz = pz - ez;
+        double t = vx * dx + vy * dy + vz * dz;
+        if (t < 0) continue;
+        double qx = ex + dx * t - px;
+        double qy = ey + dy * t - py;
+        double qz = ez + dz * t - pz;
+        double dist = std::sqrt(qx * qx + qy * qy + qz * qz);
+        if (dist < bestDist) {
+            bestDist = dist;
+            best = &mount;
+        }
+    }
+    if (!best) return false;
+    SnapSelectedPart(chassisInstance, best->id);
+    return true;
+}
+
+void EditorUI::RenderAssemblerPanel() {
+    auto& catalog = PartCatalog::Instance();
+    if (!catalog.IsLoaded()) {
+        if (ImGui::Button("Load part catalog")) {
+            catalog.Load();
+        }
+        ImGui::TextWrapped("Catalog not loaded. Expected assets/parts/catalog.json");
+        return;
+    }
+
+    if (m_pendingClickX >= 0 && !ImGui::GetIO().WantCaptureMouse) {
+        TryPickMount(m_pendingClickX, m_pendingClickY);
+        m_pendingClickX = -1;
+        m_pendingClickY = -1;
+    } else if (m_pendingClickX >= 0) {
+        m_pendingClickX = -1;
+        m_pendingClickY = -1;
+    }
+
+    ImGui::TextUnformatted("1. Click a part   2. Click a mount to snap");
+    ImGui::Separator();
+
+    const char* categories[] = {"chassis", "wheel", "caster", "hub", "sensor", "arm"};
+    ImGui::BeginChild("palette", ImVec2(0, 180), true);
+    for (const char* cat : categories) {
+        auto parts = catalog.ByCategory(cat);
+        if (parts.empty()) continue;
+        if (ImGui::TreeNodeEx(cat, ImGuiTreeNodeFlags_DefaultOpen)) {
+            for (const auto* part : parts) {
+                bool selected = (m_selectedPartId == part->id);
+                if (ImGui::Selectable(part->name.c_str(), selected)) {
+                    m_selectedPartId = part->id;
+                    if (part->category == "chassis") {
+                        SnapSelectedPart({}, {});
+                    }
+                }
+            }
+            ImGui::TreePop();
+        }
+    }
+    ImGui::EndChild();
+
+    if (!m_selectedPartId.empty()) {
+        ImGui::Text("Selected: %s", m_selectedPartId.c_str());
+    } else {
+        ImGui::TextDisabled("No part selected");
+    }
+
+    ImGui::Separator();
+    ImGui::TextUnformatted("Mount frames");
+    const CatalogPart* chassisPart = nullptr;
+    std::string chassisInstance;
+    for (const auto& item : m_assembly) {
+        const CatalogPart* p = catalog.Find(item.partId);
+        if (p && p->category == "chassis") {
+            chassisPart = p;
+            chassisInstance = item.instanceId;
+            break;
+        }
+    }
+    if (chassisPart) {
+        for (const auto& mount : chassisPart->mounts) {
+            std::string label = mount.id + "  (" + mount.role + ")";
+            if (ImGui::Button(label.c_str())) {
+                SnapSelectedPart(chassisInstance, mount.id);
+            }
+        }
+        const CatalogPart* selected = catalog.Find(m_selectedInstanceId);
+        if (!selected) {
+            for (auto it = m_assembly.rbegin(); it != m_assembly.rend(); ++it) {
+                const CatalogPart* p = catalog.Find(it->partId);
+                if (p && !p->mounts.empty() && p->category == "arm") {
+                    ImGui::Separator();
+                    ImGui::Text("On %s", it->instanceId.c_str());
+                    for (const auto& mount : p->mounts) {
+                        if (ImGui::Button((mount.id + "##" + it->instanceId).c_str())) {
+                            SnapSelectedPart(it->instanceId, mount.id);
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+    } else {
+        ImGui::TextDisabled("Place a chassis to expose mounts.");
+    }
+
+    ImGui::Separator();
+    ImGui::Text("Assembly (%zu parts)", m_assembly.size());
+    ImGui::BeginChild("assembly", ImVec2(0, 120), true);
+    for (size_t i = 0; i < m_assembly.size(); ++i) {
+        const auto& item = m_assembly[i];
+        std::string line = item.instanceId;
+        if (!item.mountId.empty()) line += " @ " + item.mountId;
+        if (ImGui::Selectable(line.c_str(), m_selectedInstanceId == item.instanceId)) {
+            m_selectedInstanceId = item.instanceId;
+            m_selectedPartId = item.partId;
+        }
+    }
+    ImGui::EndChild();
+
+    if (ImGui::Button("Remove last") && !m_assembly.empty()) {
+        m_assembly.pop_back();
+        RebuildFromAssembly();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Clear assembly")) {
+        m_assembly.clear();
+        if (m_sim->GetRobot()) {
+            m_sim->GetRobot()->RemoveFromWorld(m_sim->GetWorld());
+            m_sim->SetRobot(nullptr);
+        }
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Rebuild")) {
+        RebuildFromAssembly();
+    }
+
+    ImGui::Separator();
+    if (ImGui::Button("Save assembled JSON")) {
+        auto j = PartCatalog::AssemblyToRobotJson(m_assembly, catalog, "assembled");
+        std::ofstream out(m_saveRobotPathBuf);
+        if (out) {
+            out << j.dump(2);
+            Log(std::string("[Editor] Saved assembly to ") + m_saveRobotPathBuf);
+        }
+    }
+}
+
 }  // namespace robosim
+

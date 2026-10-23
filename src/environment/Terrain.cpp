@@ -1,6 +1,7 @@
 #include "environment/Terrain.h"
 #include "core/PhysicsWorld.h"
 #include "physics/RigidBody.h"
+#include "physics/Assets.h"
 
 #include <chrono/core/ChTypes.h>
 #include <chrono/physics/ChBody.h>
@@ -32,7 +33,14 @@ void FlatTerrain::Create(PhysicsWorld& world) {
     );
     m_body->SetName("flat_terrain");
     m_body->SetPosition(0, -m_params.thickness / 2.0, 0);
-    m_body->SetColor(0.45f, 0.52f, 0.38f);
+    m_body->SetColor(0.28f, 0.30f, 0.32f);
+    VisualSpec groundVis;
+    groundVis.texture = "textures/asphalt.png";
+    groundVis.texScaleX = static_cast<float>(m_params.sizeX / 5.0);
+    groundVis.texScaleY = static_cast<float>(m_params.sizeZ / 5.0);
+    groundVis.metallic = 0.0f;
+    groundVis.roughness = 0.92f;
+    m_body->ApplyVisual(groundVis, false);
     world.AddBody(m_body);
 
     std::cout << "[Terrain] Created flat terrain ("
@@ -132,6 +140,12 @@ void HeightmapTerrain::Create(PhysicsWorld& world) {
     visShape->SetMesh(mesh);
     visShape->SetColor(chrono::ChColor(0.40f, 0.55f, 0.32f));
     visShape->SetMutable(false);
+    VisualSpec grass;
+    grass.texture = "textures/grass.png";
+    grass.texScaleX = 12.0f;
+    grass.texScaleY = 12.0f;
+    auto mat = MakeVisualMaterial(0.40f, 0.55f, 0.32f, 0.0f, 0.9f, grass.texture, grass.texScaleX, grass.texScaleY);
+    visShape->SetMaterial(0, mat);
     body->AddVisualShape(visShape);
 
     m_body = RigidBody::Wrap(body, BodyShape::Custom);

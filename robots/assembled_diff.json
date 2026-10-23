@@ -1,0 +1,10 @@
+{
+  "name": "AssembledDiff",
+  "assembly": [
+    { "id": "base", "part": "chassis_medium" },
+    { "id": "wl", "part": "wheel_std", "parent": "base", "mount": "wheel_left", "motor": true },
+    { "id": "wr", "part": "wheel_std", "parent": "base", "mount": "wheel_right", "motor": true },
+    { "id": "c", "part": "wheel_caster", "parent": "base", "mount": "caster_rear" },
+    { "id": "lidar", "part": "lidar", "parent": "base", "mount": "deck_front" }
+  ]
+}

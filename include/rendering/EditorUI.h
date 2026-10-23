@@ -1,5 +1,7 @@
 #pragma once
 
+#include "robotics/PartCatalog.h"
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -25,7 +27,7 @@ struct EditorState {
     bool showInspector = false;
     bool showToolbar = true;
     bool showConsole = false;
-    bool showRobotBuilder = false;
+    bool showRobotBuilder = true;
     bool showDemoWindow = false;
     bool showGrid = false;
     bool showHelp = true;
@@ -103,6 +105,19 @@ private:
     char m_saveRobotPathBuf[256] = "robots/custom_robot.json";
 
     std::vector<std::shared_ptr<RigidBody>> m_undoDeleted;
+
+    std::vector<AssemblyItem> m_assembly;
+    std::string m_selectedPartId;
+    std::string m_selectedInstanceId;
+    int m_pendingClickX = -1;
+    int m_pendingClickY = -1;
+    int m_instanceSerial = 1;
+
+    void RenderAssemblerPanel();
+    void RebuildFromAssembly();
+    void SnapSelectedPart(const std::string& parentId, const std::string& mountId);
+    bool TryPickMount(int mx, int my);
+    void HandleAssemblerMouse(int x, int y, bool leftDown, bool rightDown, float wheel);
 };
 
 }  // namespace robosim

@@ -9,6 +9,9 @@
 #include <iostream>
 #include <string>
 #include <cstdlib>
+#include <filesystem>
+#include <exception>
+#include <stdexcept>
 
 using namespace robosim;
 
@@ -30,6 +33,19 @@ AppConfig ParseArgs(int argc, char* argv[]) {
             config.scenePath = argv[++i];
         } else if (arg == "--robot" && i + 1 < argc) {
             config.robotPath = argv[++i];
+#ifdef SIM_ROBOTS_DIR
+            if (!std::filesystem::exists(config.robotPath)) {
+                auto fromRobots = std::filesystem::path(SIM_ROBOTS_DIR) / config.robotPath;
+                if (std::filesystem::exists(fromRobots)) {
+                    config.robotPath = fromRobots.string();
+                } else {
+                    fromRobots = std::filesystem::path(SIM_ROBOTS_DIR) / std::filesystem::path(config.robotPath).filename();
+                    if (std::filesystem::exists(fromRobots)) {
+                        config.robotPath = fromRobots.string();
+                    }
+                }
+            }
+#endif
         } else if (arg == "--steps" && i + 1 < argc) {
             config.maxSteps = std::atoi(argv[++i]);
         } else if (arg == "--output" && i + 1 < argc) {
@@ -107,6 +123,7 @@ void RunRobotDemo(Simulation& sim) {
     auto obs1 = RigidBody::CreateBox(1.0, 1.0, 1.0, 0.0, t1, obsMat);
     obs1->SetName("obstacle_1");
     obs1->SetColor(0.85f, 0.28f, 0.22f);
+    obs1->AddVisualMesh("parts/obstacle_crate.obj", 1.0);
     world.AddBody(obs1);
 
     BodyTransform t2;
@@ -121,34 +138,38 @@ void RunRobotDemo(Simulation& sim) {
     auto obs3 = RigidBody::CreateCylinder(0.5, 0.6, 0.0, t3, obsMat);
     obs3->SetName("obstacle_3");
     obs3->SetColor(0.72f, 0.22f, 0.45f);
+    obs3->AddVisualMesh("parts/obstacle_barrel.obj", 1.0);
     world.AddBody(obs3);
 
     // Build robot
     auto robot = std::make_shared<Robot>();
-    RobotConfig rConfig;
-    rConfig.spawnX = 0.0;
-    rConfig.spawnY = 0.18;
-    rConfig.spawnZ = 0.0;
-    robot->Build(world, rConfig);
+#ifdef SIM_ROBOTS_DIR
+    const std::string robotPath =
+        (std::filesystem::path(SIM_ROBOTS_DIR) / "differential_drive.json").string();
+#else
+    const std::string robotPath = "robots/differential_drive.json";
+#endif
+    robot->BuildFromJson(world, robotPath);
     sim.SetRobot(robot);
 
-    // Attach keyboard controller
-    auto controller = std::make_shared<KeyboardController>(sim.GetRenderer());
-
-    // Register key handler with the renderer
-    sim.GetRenderer().SetKeyCallback([controller](int key, bool pressed) {
-        controller->OnKeyEvent(key, pressed);
-    });
-
-    sim.SetController(controller);
-
-    std::cout << "[Demo] Robot demo ready — use arrow keys to drive" << std::endl;
+    if (auto* renderer = sim.TryGetRenderer()) {
+        auto controller = std::make_shared<KeyboardController>(*renderer);
+        renderer->SetKeyCallback([controller](int key, bool pressed) {
+            controller->OnKeyEvent(key, pressed);
+        });
+        sim.SetController(controller);
+        std::cout << "[Demo] Robot demo ready — use WASD or arrow keys to drive" << std::endl;
+    } else {
+        std::cout << "[Demo] Robot demo ready (headless)" << std::endl;
+    }
 }
 
 int main(int argc, char* argv[]) {
     std::cout << "=== AI-Powered Robotics Physics Simulator ===" << std::endl;
     std::cout << "Version 0.1.0" << std::endl;
+    std::cout.flush();
 
+    try {
     auto appConfig = ParseArgs(argc, argv);
 
     Simulation sim;
@@ -169,6 +190,9 @@ int main(int argc, char* argv[]) {
     } else {
         RunRobotDemo(sim);
         if (!appConfig.robotPath.empty()) {
+            if (sim.GetRobot()) {
+                sim.GetRobot()->RemoveFromWorld(sim.GetWorld());
+            }
             auto robot = std::make_shared<Robot>();
             robot->BuildFromJson(sim.GetWorld(), appConfig.robotPath);
             sim.SetRobot(robot);
@@ -196,4 +220,15 @@ int main(int argc, char* argv[]) {
 
     std::cout << "=== Simulation Complete ===" << std::endl;
     return 0;
+    } catch (const std::exception& e) {
+        std::cerr << "[Fatal] " << e.what() << std::endl;
+        std::cerr << "Press Enter to close..." << std::endl;
+        std::cin.get();
+        return 1;
+    } catch (...) {
+        std::cerr << "[Fatal] Unknown error while starting the window." << std::endl;
+        std::cerr << "Press Enter to close..." << std::endl;
+        std::cin.get();
+        return 1;
+    }
 }
