@@ -1,0 +1,60 @@
+{
+  "name": "ramp_challenge",
+  "gravity": [0, -9.81, 0],
+  "ground": {
+    "type": "plane",
+    "friction": 0.4,
+    "restitution": 0.05
+  },
+  "objects": [
+    {
+      "name": "ramp_gentle",
+      "type": "ramp",
+      "length": 4.0,
+      "slope": 8,
+      "position": [0.0, 0.2, 4.0],
+      "friction": 0.6
+    },
+    {
+      "name": "ramp_medium",
+      "type": "ramp",
+      "length": 3.5,
+      "slope": 15,
+      "position": [0.0, 0.4, 10.0],
+      "friction": 0.6
+    },
+    {
+      "name": "ramp_steep",
+      "type": "ramp",
+      "length": 3.0,
+      "slope": 25,
+      "position": [0.0, 0.8, 16.0],
+      "friction": 0.7
+    },
+    {
+      "name": "ramp_extreme",
+      "type": "ramp",
+      "length": 2.5,
+      "slope": 35,
+      "position": [0.0, 1.2, 21.0],
+      "friction": 0.8
+    },
+    {
+      "name": "guide_wall_left",
+      "type": "wall",
+      "size": [0.2, 0.8, 30.0],
+      "position": [-3.0, 0.4, 12.0],
+      "mass": 0,
+      "friction": 0.3
+    },
+    {
+      "name": "guide_wall_right",
+      "type": "wall",
+      "size": [0.2, 0.8, 30.0],
+      "position": [3.0, 0.4, 12.0],
+      "mass": 0,
+      "friction": 0.3
+    }
+  ],
+  "robot_spawn": [0, 0.5, 0]
+}

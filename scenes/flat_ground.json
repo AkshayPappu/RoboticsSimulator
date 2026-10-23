@@ -1,0 +1,11 @@
+{
+  "name": "flat_ground",
+  "gravity": [0, -9.81, 0],
+  "ground": {
+    "type": "plane",
+    "friction": 0.5,
+    "restitution": 0.1
+  },
+  "objects": [],
+  "robot_spawn": [0, 0.5, 0]
+}
