@@ -41,6 +41,7 @@ public:
     void Render();
 
     void SetWindowTitle(const std::string& title);
+    void BindAll();
 
     using KeyCallback = std::function<void(int key, bool pressed)>;
     void SetKeyCallback(KeyCallback callback) { m_keyCallback = callback; }

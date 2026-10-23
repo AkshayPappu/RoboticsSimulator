@@ -45,6 +45,11 @@ void Simulation::Init(const SimulationConfig& config) {
 void Simulation::Run() {
     m_state = SimulationState::Running;
 
+    // Bind all physics bodies to the visual system now that the scene is populated
+    if (m_renderer) {
+        m_renderer->BindAll();
+    }
+
     auto frameStart = std::chrono::high_resolution_clock::now();
     double frameDuration = 1.0 / m_config.renderFps;
 
