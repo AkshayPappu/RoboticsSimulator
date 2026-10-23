@@ -37,6 +37,7 @@ target_link_libraries(test_physics PRIVATE
     nlohmann_json::nlohmann_json
     imgui
     imguizmo_lib
+    opengl32
 )
 add_test(NAME PhysicsTests COMMAND test_physics)
 
@@ -49,6 +50,7 @@ target_link_libraries(test_robot PRIVATE
     nlohmann_json::nlohmann_json
     imgui
     imguizmo_lib
+    opengl32
 )
 add_test(NAME RobotTests COMMAND test_robot)
 
@@ -61,5 +63,6 @@ target_link_libraries(test_scene_loader PRIVATE
     nlohmann_json::nlohmann_json
     imgui
     imguizmo_lib
+    opengl32
 )
 add_test(NAME SceneLoaderTests COMMAND test_scene_loader)

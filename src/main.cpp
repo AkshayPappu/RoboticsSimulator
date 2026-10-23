@@ -153,6 +153,7 @@ int main(int argc, char* argv[]) {
     simConfig.headless = appConfig.headless;
     simConfig.scenePath = appConfig.scenePath;
     simConfig.maxSteps = appConfig.maxSteps;
+    simConfig.outputPath = appConfig.outputPath;
 
     sim.Init(simConfig);
 

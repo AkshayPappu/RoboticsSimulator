@@ -1,6 +1,7 @@
 #include "physics/ChronoEngine.h"
 
 #include <chrono/solver/ChSolverPSOR.h>
+#include <chrono/collision/ChCollisionSystem.h>
 
 namespace robosim {
 
@@ -13,6 +14,7 @@ ChronoEngine::ChronoEngine(ContactMethod method)
         m_system = std::make_unique<chrono::ChSystemNSC>();
     }
 
+    m_system->SetCollisionSystemType(chrono::ChCollisionSystem::Type::BULLET);
     m_system->SetGravitationalAcceleration(chrono::ChVector3d(0, -9.81, 0));
 
     if (method == ContactMethod::NSC) {
@@ -54,8 +56,8 @@ void ChronoEngine::SetSolverMaxIterations(int iterations) {
 }
 
 void ChronoEngine::SetCollisionEnvelope(double envelope) {
-    // Collision envelope setting varies by Chrono version
-    // In Chrono 10, envelope is typically set per-shape or via system settings
+    // In Chrono 10 collision envelope is set per-shape, not on the system
+    (void)envelope;
 }
 
 void ChronoEngine::AddBody(std::shared_ptr<chrono::ChBody> body) {

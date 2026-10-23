@@ -9,6 +9,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Options
 # ----------------------------------------------------------------------------
 option(BUILD_TESTS "Build unit tests" ON)
+option(BUILD_PYTHON_BINDINGS "Build Python pybind11 module" OFF)
 option(ENABLE_HEADLESS "Build with headless support (no visualization)" OFF)
 
 # ----------------------------------------------------------------------------
@@ -149,11 +150,58 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     nlohmann_json::nlohmann_json
     imgui
     imguizmo_lib
+    opengl32
 )
 
 # Copy Chrono DLLs to output directory on Windows
 if(WIN32 AND CHRONO_DLL_NAMES)
     add_CHRONO_DLLS_copy_command()
+endif()
+
+# ----------------------------------------------------------------------------
+# Python Bindings (optional)
+# ----------------------------------------------------------------------------
+if(BUILD_PYTHON_BINDINGS)
+    FetchContent_Declare(
+        pybind11
+        GIT_REPOSITORY https://github.com/pybind/pybind11.git
+        GIT_TAG        v2.12.0
+        GIT_SHALLOW    TRUE
+    )
+    FetchContent_MakeAvailable(pybind11)
+
+    set(SIM_BINDING_SOURCES
+        src/core/Simulation.cpp
+        src/core/PhysicsWorld.cpp
+        src/core/SceneManager.cpp
+        src/core/Telemetry.cpp
+        src/physics/ChronoEngine.cpp
+        src/physics/RigidBody.cpp
+        src/robotics/Robot.cpp
+        src/robotics/Joint.cpp
+        src/robotics/Motor.cpp
+        src/robotics/Controller.cpp
+        src/environment/Terrain.cpp
+        src/environment/SceneLoader.cpp
+        src/rendering/Renderer.cpp
+        src/rendering/EditorUI.cpp
+    )
+
+    pybind11_add_module(robosim src/bindings/PySimBridge.cpp ${SIM_BINDING_SOURCES})
+    target_include_directories(robosim PRIVATE ${CMAKE_SOURCE_DIR}/include)
+    target_compile_definitions(robosim PRIVATE
+        "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
+        "SIM_SCENES_DIR=\"${CMAKE_SOURCE_DIR}/scenes\""
+        "SIM_ROBOTS_DIR=\"${CMAKE_SOURCE_DIR}/robots\""
+    )
+    target_link_libraries(robosim PRIVATE
+        ${CHRONO_TARGETS}
+        nlohmann_json::nlohmann_json
+        imgui
+        imguizmo_lib
+        opengl32
+    )
+    message(STATUS "Python bindings: ENABLED")
 endif()
 
 # ----------------------------------------------------------------------------
