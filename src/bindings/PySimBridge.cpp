@@ -9,6 +9,7 @@
 #include "robotics/Robot.h"
 #include "robotics/Motor.h"
 #include "robotics/Controller.h"
+#include "robotics/Sensor.h"
 
 namespace py = pybind11;
 using namespace robosim;
@@ -229,7 +230,20 @@ PYBIND11_MODULE(robosim, m) {
         .def("is_flipped", &Robot::IsFlipped)
         .def("get_left_wheel_speed", &Robot::GetLeftWheelSpeed)
         .def("get_right_wheel_speed", &Robot::GetRightWheelSpeed)
-        .def("set_wheel_speeds", &Robot::SetWheelSpeeds);
+        .def("set_wheel_speeds", &Robot::SetWheelSpeeds)
+        .def("get_sensor_readings", [](const Robot& r) {
+            py::dict d;
+            for (const auto& sensor : r.GetSensors()) {
+                if (sensor->GetType() == SensorType::Distance) {
+                    auto* dist = static_cast<const DistanceSensor*>(sensor.get());
+                    d[sensor->GetName().c_str()] = dist->GetDistance();
+                } else if (sensor->GetType() == SensorType::Contact) {
+                    auto* c = static_cast<const ContactSensor*>(sensor.get());
+                    d[sensor->GetName().c_str()] = c->InContact();
+                }
+            }
+            return d;
+        });
 
     // StepResult
     py::class_<StepResult>(m, "StepResult")

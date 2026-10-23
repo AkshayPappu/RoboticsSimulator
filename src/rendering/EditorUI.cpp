@@ -1,18 +1,26 @@
 #include "rendering/EditorUI.h"
+#include "rendering/Renderer.h"
 #include "core/Simulation.h"
 #include "core/PhysicsWorld.h"
 #include "core/SceneManager.h"
 #include "physics/RigidBody.h"
 #include "robotics/Robot.h"
 #include "robotics/Motor.h"
+#include "robotics/Sensor.h"
+#include "robotics/Controller.h"
+
+#include <fstream>
+#include <nlohmann/json.hpp>
 
 #include <imgui.h>
 #include <ImGuizmo.h>
+#include <chrono/physics/ChSystem.h>
 
 #include <cstring>
 #include <cstdio>
 #include <chrono>
 #include <algorithm>
+#include <cmath>
 
 namespace robosim {
 
@@ -24,6 +32,7 @@ void EditorUI::Initialize(Simulation& sim) {
     m_initialized = true;
 
     Log("[Editor] Initialized");
+    Log("[Editor] Drive: arrow keys | Camera: Irrlicht mouse | Grid: View menu");
 }
 
 void EditorUI::Render() {
@@ -88,6 +97,16 @@ void EditorUI::RenderMenuBar() {
                 ImGui::OpenPopup("SaveScenePopup");
             }
             ImGui::Separator();
+            if (ImGui::MenuItem("Undo Delete", "Ctrl+Z")) {
+                if (!m_undoDeleted.empty()) {
+                    auto body = m_undoDeleted.back();
+                    m_undoDeleted.pop_back();
+                    m_sim->GetSceneManager().AddObject(body);
+                    m_sim->GetRenderer().BindAll();
+                    Log("[Editor] Undo delete");
+                }
+            }
+            ImGui::Separator();
             if (ImGui::MenuItem("Exit")) {
                 m_sim->Stop();
             }
@@ -100,6 +119,7 @@ void EditorUI::RenderMenuBar() {
             ImGui::MenuItem("Toolbar", nullptr, &m_state.showToolbar);
             ImGui::MenuItem("Console", nullptr, &m_state.showConsole);
             ImGui::MenuItem("Robot Builder", nullptr, &m_state.showRobotBuilder);
+            ImGui::MenuItem("Grid", nullptr, &m_state.showGrid);
             ImGui::Separator();
             ImGui::MenuItem("ImGui Demo", nullptr, &m_state.showDemoWindow);
             ImGui::EndMenu();
@@ -228,6 +248,10 @@ void EditorUI::RenderToolbar() {
         if (body) {
             body->SetName("new_object");
             m_sim->GetSceneManager().AddObject(body);
+            if (!m_sim->GetRenderer().GetVisualSystem()) {
+            } else {
+                m_sim->GetRenderer().BindAll();
+            }
             Log("[Editor] Added new object");
         }
     }
@@ -308,9 +332,10 @@ void EditorUI::RenderHierarchyPanel() {
     if (ImGui::Button("Delete Selected") && m_state.selectedObjectIndex >= 0 &&
         m_state.selectedObjectIndex < (int)objects.size()) {
         auto obj = objects[m_state.selectedObjectIndex];
+        m_undoDeleted.push_back(obj);
         m_sim->GetSceneManager().RemoveObject(obj);
         m_state.selectedObjectIndex = -1;
-        Log("[Editor] Deleted object");
+        Log("[Editor] Deleted object (Undo from File menu)");
     }
 
     ImGui::End();
@@ -347,13 +372,57 @@ void EditorUI::RenderInspectorPanel() {
 
         double qw, qx, qy, qz;
         obj->GetRotation(qw, qx, qy, qz);
-        ImGui::Text("Rotation: (%.2f, %.2f, %.2f, %.2f)", qw, qx, qy, qz);
+        // Convert quaternion to Euler (XYZ)
+        float euler[3];
+        {
+            double sinr_cosp = 2.0 * (qw * qx + qy * qz);
+            double cosr_cosp = 1.0 - 2.0 * (qx * qx + qy * qy);
+            euler[0] = (float)(std::atan2(sinr_cosp, cosr_cosp) * 180.0 / 3.141592653589793);
+            double sinp = 2.0 * (qw * qy - qz * qx);
+            euler[1] = (float)(std::asin(std::clamp(sinp, -1.0, 1.0)) * 180.0 / 3.141592653589793);
+            double siny_cosp = 2.0 * (qw * qz + qx * qy);
+            double cosy_cosp = 1.0 - 2.0 * (qy * qy + qz * qz);
+            euler[2] = (float)(std::atan2(siny_cosp, cosy_cosp) * 180.0 / 3.141592653589793);
+        }
+        if (ImGui::DragFloat3("Euler (deg)", euler, 1.0f)) {
+            double rx = euler[0] * 3.141592653589793 / 180.0;
+            double ry = euler[1] * 3.141592653589793 / 180.0;
+            double rz = euler[2] * 3.141592653589793 / 180.0;
+            double cy = std::cos(rz * 0.5), sy = std::sin(rz * 0.5);
+            double cp = std::cos(ry * 0.5), sp = std::sin(ry * 0.5);
+            double cr = std::cos(rx * 0.5), sr = std::sin(rx * 0.5);
+            obj->SetRotation(
+                cr * cp * cy + sr * sp * sy,
+                sr * cp * cy - cr * sp * sy,
+                cr * sp * cy + sr * cp * sy,
+                cr * cp * sy - sr * sp * cy
+            );
+        }
 
         ImGui::Separator();
         ImGui::Text("Velocity");
         double vx, vy, vz;
         obj->GetLinearVelocity(vx, vy, vz);
         ImGui::Text("Linear: (%.2f, %.2f, %.2f)", vx, vy, vz);
+    } else if (m_sim->GetRobot()) {
+        ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Robot Sensors");
+        for (const auto& sensor : m_sim->GetRobot()->GetSensors()) {
+            ImGui::Separator();
+            ImGui::Text("%s", sensor->GetName().c_str());
+            if (sensor->GetType() == SensorType::Distance) {
+                auto* d = static_cast<DistanceSensor*>(sensor.get());
+                ImGui::Text("  Distance: %.3f m  hit=%s", d->GetDistance(), d->HasHit() ? "yes" : "no");
+            } else if (sensor->GetType() == SensorType::IMU) {
+                auto* imu = static_cast<IMUSensor*>(sensor.get());
+                auto a = imu->GetLinearAccel();
+                auto w = imu->GetAngularVel();
+                ImGui::Text("  Accel: (%.2f, %.2f, %.2f)", a.x(), a.y(), a.z());
+                ImGui::Text("  Gyro:  (%.2f, %.2f, %.2f)", w.x(), w.y(), w.z());
+            } else if (sensor->GetType() == SensorType::Contact) {
+                auto* c = static_cast<ContactSensor*>(sensor.get());
+                ImGui::Text("  Contact: %s", c->InContact() ? "YES" : "no");
+            }
+        }
     } else {
         ImGui::TextWrapped("Select an object in the hierarchy to inspect it.");
     }
@@ -400,13 +469,54 @@ void EditorUI::RenderRobotBuilderPanel() {
     static float wheelOffsetZ = 0.2f;
     static float maxMotorSpeed = 10.0f;
     static float maxTorque = 2.0f;
+    static int wheelCount = 2;
+    static int casterCount = 1;
+
+    const char* presets[] = {
+        "Custom",
+        "robots/differential_drive.json",
+        "robots/four_wheel.json",
+        "robots/robot_arm.json"
+    };
+    if (ImGui::Combo("Preset", &m_presetIndex, presets, 4)) {
+        if (m_presetIndex > 0) {
+            auto robot = std::make_shared<Robot>();
+            robot->BuildFromJson(m_sim->GetWorld(), presets[m_presetIndex]);
+            m_sim->SetRobot(robot);
+            Log(std::string("[Editor] Loaded preset ") + presets[m_presetIndex]);
+        }
+    }
+
+    const char* controllers[] = { "Keyboard", "Script", "None" };
+    if (ImGui::Combo("Controller", &m_controllerIndex, controllers, 3)) {
+        if (m_controllerIndex == 0) {
+            auto controller = std::make_shared<KeyboardController>(m_sim->GetRenderer());
+            m_sim->GetRenderer().SetKeyCallback([controller](int key, bool pressed) {
+                controller->OnKeyEvent(key, pressed);
+            });
+            m_sim->SetController(controller);
+            Log("[Editor] Keyboard controller attached");
+        } else if (m_controllerIndex == 1) {
+            auto script = std::make_shared<ScriptController>();
+            script->AddCommand(4.0, 4.0, 2.0);
+            script->AddCommand(2.0, -2.0, 1.0);
+            script->AddCommand(4.0, 4.0, 2.0);
+            m_sim->SetController(script);
+            Log("[Editor] Script controller attached");
+        } else {
+            m_sim->SetController(nullptr);
+            Log("[Editor] Controller cleared");
+        }
+    }
 
     ImGui::Text("Chassis");
     ImGui::DragFloat3("Chassis Size", chassisSize, 0.01f, 0.01f, 5.0f);
     ImGui::DragFloat("Chassis Mass (kg)", &chassisMass, 0.1f, 0.1f, 100.0f);
 
     ImGui::Separator();
-    ImGui::Text("Wheels");
+    ImGui::Text("Wheels / Casters");
+    ImGui::SliderInt("Wheel Count", &wheelCount, 0, 6);
+    ImGui::SliderInt("Caster Count", &casterCount, 0, 2);
     ImGui::DragFloat("Wheel Radius", &wheelRadius, 0.01f, 0.01f, 1.0f);
     ImGui::DragFloat("Wheel Width", &wheelWidth, 0.01f, 0.01f, 0.5f);
     ImGui::DragFloat("Wheel Offset Z", &wheelOffsetZ, 0.01f, 0.01f, 2.0f);
@@ -429,6 +539,35 @@ void EditorUI::RenderRobotBuilderPanel() {
         config.wheelOffsetZ = wheelOffsetZ;
         config.maxMotorSpeed = maxMotorSpeed;
         config.maxTorque = maxTorque;
+        config.casterRadius = (casterCount > 0) ? 0.05 : 0.0;
+        config.casters.clear();
+        config.wheels.clear();
+
+        for (int i = 0; i < wheelCount; ++i) {
+            WheelSpec w;
+            w.name = "wheel_" + std::to_string(i);
+            w.radius = wheelRadius;
+            w.width = wheelWidth;
+            w.mass = 0.5;
+            w.motor = true;
+            if (wheelCount == 2) {
+                w.offsetZ = (i == 0) ? wheelOffsetZ : -wheelOffsetZ;
+            } else {
+                int pair = i / 2;
+                bool left = (i % 2) == 0;
+                w.offsetX = (pair == 0) ? 0.18 : -0.18;
+                if (wheelCount > 4 && pair == 2) w.offsetX = 0.0;
+                w.offsetZ = left ? wheelOffsetZ : -wheelOffsetZ;
+            }
+            w.offsetY = -0.05;
+            config.wheels.push_back(w);
+        }
+        for (int i = 0; i < casterCount; ++i) {
+            CasterSpec c;
+            c.offsetX = (i == 0) ? -0.2 : 0.2;
+            c.offsetY = -0.1;
+            config.casters.push_back(c);
+        }
 
         auto spawn = m_sim->GetSceneManager().GetSpawnPoint();
         config.spawnX = spawn.x;
@@ -446,6 +585,18 @@ void EditorUI::RenderRobotBuilderPanel() {
     if (ImGui::Button("Load from JSON...")) {
         ImGui::OpenPopup("LoadRobotPopup");
     }
+
+    ImGui::SameLine();
+    if (ImGui::Button("Save Robot JSON")) {
+        if (m_sim->GetRobot()) {
+            std::ofstream out(m_saveRobotPathBuf);
+            if (out) {
+                out << m_sim->GetRobot()->ToJson().dump(2);
+                Log(std::string("[Editor] Saved robot to ") + m_saveRobotPathBuf);
+            }
+        }
+    }
+    ImGui::InputText("Save path", m_saveRobotPathBuf, sizeof(m_saveRobotPathBuf));
 
     if (ImGui::BeginPopupModal("LoadRobotPopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::Text("Robot JSON path:");
@@ -497,6 +648,7 @@ void EditorUI::RenderPerformanceOverlay() {
     ImGui::Text("FPS: %.1f (%.2f ms)", m_fps, m_frameTimeMs);
     ImGui::Text("Sim: %.3f s | Step: %d", m_sim->GetSimTime(), m_sim->GetStepCount());
     ImGui::Text("Bodies: %zu", m_sim->GetWorld().GetBodies().size());
+    ImGui::Text("Contacts: %d", m_sim->GetWorld().GetChSystem().GetNumContacts());
 
     ImGui::End();
 }

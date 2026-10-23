@@ -62,6 +62,8 @@ public:
         const Material& material = {}
     );
 
+    static std::shared_ptr<RigidBody> Wrap(std::shared_ptr<chrono::ChBody> body, BodyShape shape = BodyShape::Custom);
+
     // Accessors
     std::shared_ptr<chrono::ChBody> GetChBody() const { return m_body; }
 
@@ -87,6 +89,8 @@ public:
 
     void ApplyForce(double fx, double fy, double fz);
     void ApplyTorque(double tx, double ty, double tz);
+
+    void SetColor(float r, float g, float b);
 
 private:
     RigidBody() = default;

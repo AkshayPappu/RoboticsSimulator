@@ -44,6 +44,10 @@ SceneData SceneLoader::Load(const std::string& path) {
                 data.groundFriction = ground["friction"].get<double>();
             if (ground.contains("restitution"))
                 data.groundRestitution = ground["restitution"].get<double>();
+            if (ground.contains("heightmap_path"))
+                data.heightmapPath = ground["heightmap_path"].get<std::string>();
+            if (ground.contains("height_scale"))
+                data.heightScale = ground["height_scale"].get<double>();
         }
 
         if (j.contains("objects") && j["objects"].is_array()) {
@@ -79,6 +83,13 @@ SceneData SceneLoader::Load(const std::string& path) {
                 if (body) {
                     std::string name = obj.value("name", type);
                     body->SetName(name);
+                    if (type == "ramp") {
+                        body->SetColor(0.62f, 0.48f, 0.28f);
+                    } else if (mass <= 0.0) {
+                        body->SetColor(0.82f, 0.32f, 0.22f);
+                    } else {
+                        body->SetColor(0.28f, 0.55f, 0.82f);
+                    }
                     data.objects.push_back(body);
                 }
             }

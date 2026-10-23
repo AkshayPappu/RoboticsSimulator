@@ -17,6 +17,8 @@ struct SceneData {
     std::string groundType = "plane";
     double groundFriction = 0.5;
     double groundRestitution = 0.1;
+    std::string heightmapPath;
+    double heightScale = 4.0;
 
     std::vector<std::shared_ptr<RigidBody>> objects;
 

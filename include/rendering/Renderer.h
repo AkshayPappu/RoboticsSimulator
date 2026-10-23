@@ -49,6 +49,8 @@ public:
 
     void SetWindowTitle(const std::string& title);
     void BindAll();
+    void SetShowGrid(bool show);
+    bool GetShowGrid() const { return m_showGrid; }
 
     using KeyCallback = std::function<void(int key, bool pressed)>;
     void SetKeyCallback(KeyCallback callback);
@@ -74,6 +76,7 @@ private:
     bool m_imguiInitialized = false;
     int m_windowWidth = 1280;
     int m_windowHeight = 720;
+    bool m_showGrid = true;
 
     friend class SimEventReceiver;
 };

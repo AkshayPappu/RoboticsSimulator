@@ -107,6 +107,7 @@ set(SIMULATOR_SOURCES
     src/robotics/Joint.cpp
     src/robotics/Motor.cpp
     src/robotics/Controller.cpp
+    src/robotics/Sensor.cpp
     src/environment/Terrain.cpp
     src/environment/SceneLoader.cpp
     src/rendering/Renderer.cpp
@@ -124,6 +125,7 @@ set(SIMULATOR_HEADERS
     include/robotics/Joint.h
     include/robotics/Motor.h
     include/robotics/Controller.h
+    include/robotics/Sensor.h
     include/environment/Terrain.h
     include/environment/SceneLoader.h
     include/rendering/Renderer.h
@@ -181,6 +183,7 @@ if(BUILD_PYTHON_BINDINGS)
         src/robotics/Joint.cpp
         src/robotics/Motor.cpp
         src/robotics/Controller.cpp
+        src/robotics/Sensor.cpp
         src/environment/Terrain.cpp
         src/environment/SceneLoader.cpp
         src/rendering/Renderer.cpp

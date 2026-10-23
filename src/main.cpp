@@ -106,18 +106,21 @@ void RunRobotDemo(Simulation& sim) {
     t1.px = 3.0; t1.py = 0.5; t1.pz = 0.0;
     auto obs1 = RigidBody::CreateBox(1.0, 1.0, 1.0, 0.0, t1, obsMat);
     obs1->SetName("obstacle_1");
+    obs1->SetColor(0.85f, 0.28f, 0.22f);
     world.AddBody(obs1);
 
     BodyTransform t2;
     t2.px = -2.0; t2.py = 0.25; t2.pz = 3.0;
     auto obs2 = RigidBody::CreateBox(2.0, 0.5, 0.5, 0.0, t2, obsMat);
     obs2->SetName("obstacle_2");
+    obs2->SetColor(0.90f, 0.55f, 0.18f);
     world.AddBody(obs2);
 
     BodyTransform t3;
     t3.px = 0.0; t3.py = 0.3; t3.pz = -4.0;
     auto obs3 = RigidBody::CreateCylinder(0.5, 0.6, 0.0, t3, obsMat);
     obs3->SetName("obstacle_3");
+    obs3->SetColor(0.72f, 0.22f, 0.45f);
     world.AddBody(obs3);
 
     // Build robot
@@ -158,10 +161,18 @@ int main(int argc, char* argv[]) {
     sim.Init(simConfig);
 
     if (!appConfig.scenePath.empty()) {
-        // Scene loaded from JSON by Init
+        if (!appConfig.robotPath.empty()) {
+            auto robot = std::make_shared<Robot>();
+            robot->BuildFromJson(sim.GetWorld(), appConfig.robotPath);
+            sim.SetRobot(robot);
+        }
     } else {
-        // Default: run robot demo with falling objects
         RunRobotDemo(sim);
+        if (!appConfig.robotPath.empty()) {
+            auto robot = std::make_shared<Robot>();
+            robot->BuildFromJson(sim.GetWorld(), appConfig.robotPath);
+            sim.SetRobot(robot);
+        }
     }
 
     // Print sim info periodically

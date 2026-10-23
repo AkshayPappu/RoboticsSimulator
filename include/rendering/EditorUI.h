@@ -25,8 +25,9 @@ struct EditorState {
     bool showInspector = true;
     bool showToolbar = true;
     bool showConsole = true;
-    bool showRobotBuilder = false;
+    bool showRobotBuilder = true;
     bool showDemoWindow = false;
+    bool showGrid = true;
 
     EditorTool activeTool = EditorTool::Select;
     int selectedObjectIndex = -1;
@@ -94,6 +95,12 @@ private:
     float m_newObjPos[3] = {0.0f, 1.0f, 0.0f};
     float m_newObjMass = 1.0f;
     int m_newObjType = 0;  // 0=box, 1=sphere, 2=cylinder
+
+    int m_presetIndex = 0;
+    int m_controllerIndex = 0;
+    char m_saveRobotPathBuf[256] = "robots/custom_robot.json";
+
+    std::vector<std::shared_ptr<RigidBody>> m_undoDeleted;
 };
 
 }  // namespace robosim

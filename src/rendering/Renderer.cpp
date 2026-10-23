@@ -121,6 +121,7 @@ void Renderer::Initialize(PhysicsWorld& world, const RendererConfig& config) {
     m_vis->SetWindowSize(config.windowWidth, config.windowHeight);
     m_vis->SetWindowTitle(config.windowTitle);
     m_vis->SetCameraVertical(CameraVerticalDir::Y);
+    m_vis->EnableShadows(true);
 
     m_vis->Initialize();
 
@@ -128,10 +129,24 @@ void Renderer::Initialize(PhysicsWorld& world, const RendererConfig& config) {
         ChVector3d(config.cameraX, config.cameraY, config.cameraZ),
         ChVector3d(config.lookAtX, config.lookAtY, config.lookAtZ)
     );
-    m_vis->AddTypicalLights();
+
+    // Sun-like directional light
+    m_vis->AddLightDirectional(
+        55.0, 40.0,
+        ChColor(0.25f, 0.28f, 0.32f),
+        ChColor(0.35f, 0.35f, 0.30f),
+        ChColor(1.0f, 0.95f, 0.85f)
+    );
+    m_vis->AddLightWithShadow(
+        ChVector3d(8, 16, 8),
+        ChVector3d(0, 0, 0),
+        30, 0.5, 50, 45,
+        1024, ChColor(1.0f, 0.95f, 0.85f)
+    );
+
     m_vis->AddGrid(0.5, 0.5, 40, 40,
-                   ChCoordsys<>(ChVector3d(0, 0, 0), QuatFromAngleX(CH_PI_2)),
-                   ChColor(0.4f, 0.4f, 0.4f));
+                   ChCoordsys<>(ChVector3d(0, 0.01, 0), QuatFromAngleX(CH_PI_2)),
+                   ChColor(0.35f, 0.40f, 0.32f));
 
     // Register event receiver for keyboard/mouse input
     m_eventReceiver = std::make_unique<SimEventReceiver>(*this);
@@ -188,7 +203,12 @@ void Renderer::Render() {
 void Renderer::BindAll() {
     if (m_vis) {
         m_vis->BindAll();
+        m_vis->EnableShadows();
     }
+}
+
+void Renderer::SetShowGrid(bool show) {
+    m_showGrid = show;
 }
 
 void Renderer::SetWindowTitle(const std::string& title) {

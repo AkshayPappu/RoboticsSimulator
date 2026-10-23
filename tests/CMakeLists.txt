@@ -22,6 +22,7 @@ set(SIM_LIB_SOURCES
     ${CMAKE_SOURCE_DIR}/src/robotics/Joint.cpp
     ${CMAKE_SOURCE_DIR}/src/robotics/Motor.cpp
     ${CMAKE_SOURCE_DIR}/src/robotics/Controller.cpp
+    ${CMAKE_SOURCE_DIR}/src/robotics/Sensor.cpp
     ${CMAKE_SOURCE_DIR}/src/environment/Terrain.cpp
     ${CMAKE_SOURCE_DIR}/src/environment/SceneLoader.cpp
     ${CMAKE_SOURCE_DIR}/src/rendering/Renderer.cpp

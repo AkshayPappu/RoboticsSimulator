@@ -82,6 +82,9 @@ void Simulation::Run() {
             if (m_controller && m_robot) {
                 m_controller->Update(*m_robot, dt);
             }
+            if (m_robot) {
+                m_robot->UpdateSensors(*m_world);
+            }
 
             int substeps = static_cast<int>(m_speedMultiplier);
             if (substeps < 1) substeps = 1;
@@ -170,6 +173,7 @@ void Simulation::StepOnce() {
             m_controller->Update(*m_robot, dt);
         }
         m_world->Step();
+        if (m_robot) m_robot->UpdateSensors(*m_world);
         m_stepCount++;
         m_state = SimulationState::Stepping;
     }
@@ -193,6 +197,7 @@ void Simulation::StepPhysics() {
         m_controller->Update(*m_robot, dt);
     }
     m_world->Step();
+    if (m_robot) m_robot->UpdateSensors(*m_world);
     m_stepCount++;
 }
 

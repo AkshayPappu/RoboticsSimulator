@@ -2,6 +2,7 @@
 #include "core/PhysicsWorld.h"
 #include "physics/RigidBody.h"
 #include "environment/SceneLoader.h"
+#include "environment/Terrain.h"
 
 #include <iostream>
 
@@ -29,14 +30,25 @@ void SceneManager::LoadScene(const std::string& path) {
         sceneData.gravity[2]
     );
 
-    // Add ground
+    // Add ground via Terrain classes
     if (sceneData.hasGround) {
-        Material groundMat;
-        groundMat.friction = sceneData.groundFriction;
-        groundMat.restitution = sceneData.groundRestitution;
-        auto ground = RigidBody::CreateGround(groundMat);
-        ground->SetName("ground");
-        AddObject(ground);
+        TerrainParams params;
+        params.friction = sceneData.groundFriction;
+        params.restitution = sceneData.groundRestitution;
+
+        std::unique_ptr<Terrain> terrain;
+        if (sceneData.groundType == "heightmap") {
+            params.sizeX = 40.0;
+            params.sizeZ = 40.0;
+            terrain = std::make_unique<HeightmapTerrain>(
+                sceneData.heightmapPath, sceneData.heightScale, params);
+        } else {
+            terrain = std::make_unique<FlatTerrain>(params);
+        }
+        terrain->Create(m_world);
+        if (terrain->GetBody()) {
+            m_objects.push_back(terrain->GetBody());
+        }
     }
 
     // Add scene objects

@@ -4,6 +4,8 @@
 #include <chrono/assets/ChVisualShapeBox.h>
 #include <chrono/assets/ChVisualShapeSphere.h>
 #include <chrono/assets/ChVisualShapeCylinder.h>
+#include <chrono/assets/ChVisualModel.h>
+#include <chrono/assets/ChColor.h>
 #include <chrono/utils/ChConstants.h>
 
 namespace robosim {
@@ -133,6 +135,15 @@ std::shared_ptr<RigidBody> RigidBody::CreateGround(const Material& material) {
     body->SetName("ground");
 
     rb->m_body = body;
+    rb->SetColor(0.45f, 0.52f, 0.38f);
+    return rb;
+}
+
+std::shared_ptr<RigidBody> RigidBody::Wrap(std::shared_ptr<chrono::ChBody> body, BodyShape shape) {
+    auto rb = std::shared_ptr<RigidBody>(new RigidBody());
+    rb->m_shape = shape;
+    rb->m_name = body ? body->GetName() : "body";
+    rb->m_body = body;
     return rb;
 }
 
@@ -198,6 +209,16 @@ void RigidBody::ApplyForce(double fx, double fy, double fz) {
 
 void RigidBody::ApplyTorque(double tx, double ty, double tz) {
     m_body->AccumulateTorque(0, chrono::ChVector3d(tx, ty, tz), false);
+}
+
+void RigidBody::SetColor(float r, float g, float b) {
+    if (!m_body) return;
+    auto vis = m_body->GetVisualModel();
+    if (!vis) return;
+    auto color = chrono::ChColor(r, g, b);
+    for (unsigned int i = 0; i < vis->GetNumShapes(); ++i) {
+        vis->GetShape(i)->SetColor(color);
+    }
 }
 
 }  // namespace robosim

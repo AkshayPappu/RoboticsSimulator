@@ -1,0 +1,21 @@
+{
+  "name": "Hilly Terrain",
+  "gravity": [0, -9.81, 0],
+  "ground": {
+    "type": "heightmap",
+    "friction": 0.7,
+    "restitution": 0.05,
+    "height_scale": 1.5
+  },
+  "objects": [
+    {
+      "name": "marker_box",
+      "type": "box",
+      "mass": 0.0,
+      "position": [4.0, 1.0, 4.0],
+      "size": [0.6, 0.6, 0.6],
+      "friction": 0.5
+    }
+  ],
+  "robot_spawn": [0, 2.0, 0]
+}
