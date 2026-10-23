@@ -45,15 +45,22 @@ public:
                 io.AddInputCharacter(event.KeyInput.Char);
             }
 
-            // Don't forward keyboard to app if ImGui wants it
-            if (io.WantCaptureKeyboard) {
-                return true;
+            const bool driveKey =
+                key == irr::KEY_UP || key == irr::KEY_DOWN ||
+                key == irr::KEY_LEFT || key == irr::KEY_RIGHT ||
+                key == irr::KEY_KEY_W || key == irr::KEY_KEY_A ||
+                key == irr::KEY_KEY_S || key == irr::KEY_KEY_D;
+
+            // Only trap keys when typing into a text field — never steal drive keys
+            if (io.WantTextInput && !driveKey) {
+                return false;
             }
 
             if (m_renderer.m_keyCallback) {
                 m_renderer.m_keyCallback(key, pressed);
             }
-            return false;
+            // Consume WASD/arrows so the Irrlicht camera does not steal driving
+            return driveKey;
         }
 
         if (event.EventType == irr::EET_MOUSE_INPUT_EVENT) {
@@ -105,10 +112,19 @@ private:
 Renderer::Renderer() = default;
 
 Renderer::~Renderer() {
-    if (m_imguiInitialized) {
+    ShutdownImGui();
+}
+
+void Renderer::ShutdownImGui() {
+    if (!m_imguiInitialized) return;
+    // Irrlicht may have already destroyed the GL context (window closed).
+    // Skip the OpenGL backend teardown in that case to avoid a segfault.
+    bool deviceAlive = m_vis && m_vis->GetDevice();
+    if (deviceAlive) {
         ImGui_ImplOpenGL3_Shutdown();
-        ImGui::DestroyContext();
     }
+    ImGui::DestroyContext();
+    m_imguiInitialized = false;
 }
 
 void Renderer::Initialize(PhysicsWorld& world, const RendererConfig& config) {
@@ -121,7 +137,6 @@ void Renderer::Initialize(PhysicsWorld& world, const RendererConfig& config) {
     m_vis->SetWindowSize(config.windowWidth, config.windowHeight);
     m_vis->SetWindowTitle(config.windowTitle);
     m_vis->SetCameraVertical(CameraVerticalDir::Y);
-    m_vis->EnableShadows(true);
 
     m_vis->Initialize();
 
@@ -130,23 +145,13 @@ void Renderer::Initialize(PhysicsWorld& world, const RendererConfig& config) {
         ChVector3d(config.lookAtX, config.lookAtY, config.lookAtZ)
     );
 
-    // Sun-like directional light
+    m_vis->AddTypicalLights();
     m_vis->AddLightDirectional(
-        55.0, 40.0,
-        ChColor(0.25f, 0.28f, 0.32f),
-        ChColor(0.35f, 0.35f, 0.30f),
-        ChColor(1.0f, 0.95f, 0.85f)
+        50.0, 35.0,
+        ChColor(0.45f, 0.48f, 0.52f),
+        ChColor(0.25f, 0.25f, 0.25f),
+        ChColor(1.0f, 1.0f, 1.0f)
     );
-    m_vis->AddLightWithShadow(
-        ChVector3d(8, 16, 8),
-        ChVector3d(0, 0, 0),
-        30, 0.5, 50, 45,
-        1024, ChColor(1.0f, 0.95f, 0.85f)
-    );
-
-    m_vis->AddGrid(0.5, 0.5, 40, 40,
-                   ChCoordsys<>(ChVector3d(0, 0.01, 0), QuatFromAngleX(CH_PI_2)),
-                   ChColor(0.35f, 0.40f, 0.32f));
 
     // Register event receiver for keyboard/mouse input
     m_eventReceiver = std::make_unique<SimEventReceiver>(*this);
@@ -157,8 +162,12 @@ void Renderer::Initialize(PhysicsWorld& world, const RendererConfig& config) {
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
     io.DisplaySize = ImVec2((float)config.windowWidth, (float)config.windowHeight);
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     ImGui::StyleColorsDark();
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.Alpha = 1.0f;
+    style.WindowRounding = 4.0f;
+    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.08f, 0.09f, 0.11f, 0.94f);
+    style.Colors[ImGuiCol_PopupBg] = ImVec4(0.08f, 0.09f, 0.11f, 0.98f);
 
     ImGui_ImplOpenGL3_Init("#version 130");
     m_imguiInitialized = true;
@@ -187,7 +196,10 @@ void Renderer::BeginFrame() {
 void Renderer::EndFrame() {
     if (m_imguiInitialized) {
         ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        ImDrawData* drawData = ImGui::GetDrawData();
+        if (drawData) {
+            ImGui_ImplOpenGL3_RenderDrawData(drawData);
+        }
     }
     if (m_vis) {
         m_vis->EndScene();
@@ -203,7 +215,6 @@ void Renderer::Render() {
 void Renderer::BindAll() {
     if (m_vis) {
         m_vis->BindAll();
-        m_vis->EnableShadows();
     }
 }
 

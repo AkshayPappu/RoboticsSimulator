@@ -94,7 +94,7 @@ void RunRobotDemo(Simulation& sim) {
 
     // Create ground
     Material groundMat;
-    groundMat.friction = 0.6;
+    groundMat.friction = 1.0;
     auto ground = RigidBody::CreateGround(groundMat);
     world.AddBody(ground);
 
@@ -127,7 +127,7 @@ void RunRobotDemo(Simulation& sim) {
     auto robot = std::make_shared<Robot>();
     RobotConfig rConfig;
     rConfig.spawnX = 0.0;
-    rConfig.spawnY = 0.5;
+    rConfig.spawnY = 0.18;
     rConfig.spawnZ = 0.0;
     robot->Build(world, rConfig);
     sim.SetRobot(robot);
@@ -136,7 +136,7 @@ void RunRobotDemo(Simulation& sim) {
     auto controller = std::make_shared<KeyboardController>(sim.GetRenderer());
 
     // Register key handler with the renderer
-    sim.GetRenderer().SetKeyCallback([&controller](int key, bool pressed) {
+    sim.GetRenderer().SetKeyCallback([controller](int key, bool pressed) {
         controller->OnKeyEvent(key, pressed);
     });
 

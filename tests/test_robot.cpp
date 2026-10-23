@@ -17,7 +17,9 @@ protected:
         world = std::make_unique<PhysicsWorld>();
         world->SetTimestep(0.001);
 
-        auto ground = RigidBody::CreateGround();
+        Material groundMat;
+        groundMat.friction = 1.0;
+        auto ground = RigidBody::CreateGround(groundMat);
         world->AddBody(ground);
     }
 
@@ -34,8 +36,9 @@ TEST_F(RobotTest, BuildDefaultRobot) {
     double x, y, z;
     robot.GetPosition(x, y, z);
     EXPECT_NEAR(x, 0.0, 0.01);
-    EXPECT_NEAR(y, 0.5, 0.01);
+    EXPECT_NEAR(y, robot.GetConfig().spawnY, 0.01);
     EXPECT_NEAR(z, 0.0, 0.01);
+    EXPECT_EQ(robot.GetConfig().wheels.size(), 2u);
 }
 
 TEST_F(RobotTest, BuildCustomConfig) {
@@ -151,4 +154,72 @@ TEST_F(RobotTest, GetHeadingReturnsRadians) {
     double heading = robot.GetHeading();
     EXPECT_GE(heading, -M_PI);
     EXPECT_LE(heading, M_PI);
+}
+
+TEST_F(RobotTest, StaysOnGroundAndTogether) {
+    Robot robot;
+    robot.Build(*world);
+
+    double x0, y0, z0;
+    robot.GetPosition(x0, y0, z0);
+
+    for (int i = 0; i < 2000; ++i) {
+        world->Step();
+    }
+
+    double x, y, z;
+    robot.GetPosition(x, y, z);
+    EXPECT_NEAR(x, x0, 0.25);
+    EXPECT_NEAR(z, z0, 0.25);
+    EXPECT_GT(y, 0.05);
+    EXPECT_LT(y, 0.50);
+    EXPECT_FALSE(robot.IsFlipped());
+}
+
+TEST_F(RobotTest, ReplaceRobotStaysOnGround) {
+    Robot first;
+    first.Build(*world);
+    for (int i = 0; i < 200; ++i) {
+        world->Step();
+    }
+
+    first.RemoveFromWorld(*world);
+
+    Robot second;
+    second.Build(*world);
+    for (int i = 0; i < 1500; ++i) {
+        world->Step();
+    }
+
+    double x, y, z;
+    second.GetPosition(x, y, z);
+    EXPECT_GT(y, 0.05);
+    EXPECT_LT(y, 0.50);
+    EXPECT_FALSE(second.IsFlipped());
+}
+
+TEST_F(RobotTest, DrivesForwardOnGround) {
+    Robot robot;
+    robot.Build(*world);
+
+    // Let the assembly settle on the ground first
+    for (int i = 0; i < 200; ++i) {
+        world->Step();
+    }
+
+    double x0, y0, z0;
+    robot.GetPosition(x0, y0, z0);
+
+    robot.SetWheelSpeeds(8.0, 8.0);
+    for (int i = 0; i < 2500; ++i) {
+        world->Step();
+    }
+
+    double x1, y1, z1;
+    robot.GetPosition(x1, y1, z1);
+    double dist = std::sqrt((x1 - x0) * (x1 - x0) + (z1 - z0) * (z1 - z0));
+    EXPECT_GT(dist, 0.4);
+    EXPECT_GT(y1, 0.05);
+    EXPECT_LT(y1, 0.50);
+    EXPECT_FALSE(robot.IsFlipped());
 }

@@ -91,6 +91,7 @@ public:
     void ApplyTorque(double tx, double ty, double tz);
 
     void SetColor(float r, float g, float b);
+    void SetCollisionFamily(int family, bool collideWithSameFamily = false);
 
 private:
     RigidBody() = default;

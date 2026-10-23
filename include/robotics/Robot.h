@@ -19,8 +19,8 @@ struct WheelSpec {
     double width = 0.05;
     double mass = 0.5;
     double offsetX = 0.0;
-    double offsetY = -0.05;
-    double offsetZ = 0.2;
+    double offsetY = 0.0;
+    double offsetZ = 0.16;
     bool motor = true;
 };
 
@@ -29,7 +29,7 @@ struct CasterSpec {
     double radius = 0.05;
     double mass = 0.2;
     double offsetX = -0.2;
-    double offsetY = -0.1;
+    double offsetY = 0.0;
     double offsetZ = 0.0;
 };
 
@@ -55,27 +55,27 @@ struct LinkSpec {
 struct RobotConfig {
     std::string name = "robot";
 
-    double chassisSizeX = 0.5;
-    double chassisSizeY = 0.15;
-    double chassisSizeZ = 0.3;
+    double chassisSizeX = 0.45;
+    double chassisSizeY = 0.08;
+    double chassisSizeZ = 0.22;
     double chassisMass = 5.0;
 
-    double wheelRadius = 0.1;
+    double wheelRadius = 0.12;
     double wheelWidth = 0.05;
-    double wheelMass = 0.5;
-    double wheelOffsetY = -0.05;
-    double wheelOffsetZ = 0.2;
+    double wheelMass = 0.4;
+    double wheelOffsetY = 0.0;
+    double wheelOffsetZ = 0.16;
 
-    double casterRadius = 0.05;
-    double casterMass = 0.2;
-    double casterOffsetX = -0.2;
-    double casterOffsetY = -0.1;
+    double casterRadius = 0.04;
+    double casterMass = 0.15;
+    double casterOffsetX = -0.16;
+    double casterOffsetY = 0.0;
 
     double maxMotorSpeed = 10.0;
-    double maxTorque = 2.0;
+    double maxTorque = 5.0;
 
     double spawnX = 0.0;
-    double spawnY = 0.5;
+    double spawnY = 0.18;
     double spawnZ = 0.0;
 
     std::vector<WheelSpec> wheels;
@@ -120,6 +120,7 @@ public:
     void UpdateSensors(PhysicsWorld& world);
 
     void Reset(double x, double y, double z);
+    void RemoveFromWorld(PhysicsWorld& world);
 
 private:
     void AttachWheelsAndCasters(PhysicsWorld& world);

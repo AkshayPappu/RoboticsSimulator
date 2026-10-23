@@ -2,6 +2,7 @@
 #include "physics/ChronoEngine.h"
 #include "physics/RigidBody.h"
 
+#include <chrono/collision/ChCollisionSystem.h>
 #include <algorithm>
 
 namespace robosim {
@@ -38,8 +39,18 @@ void PhysicsWorld::SetGravity(double x, double y, double z) {
 }
 
 void PhysicsWorld::AddBody(std::shared_ptr<RigidBody> body) {
-    m_engine->AddBody(body->GetChBody());
+    auto chbody = body->GetChBody();
+    m_engine->AddBody(chbody);
     m_bodies.push_back(body);
+
+    // After the first physics step Chrono has initialized Bullet, and new
+    // shapes are ignored until they are bound. That is why Robot-menu swaps
+    // were falling through the visible ground.
+    if (auto cs = m_engine->GetSystem().GetCollisionSystem()) {
+        if (cs->IsInitialized()) {
+            cs->BindItem(chbody);
+        }
+    }
 }
 
 void PhysicsWorld::RemoveBody(std::shared_ptr<RigidBody> body) {

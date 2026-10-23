@@ -10,28 +10,28 @@
       "side": "front_left",
       "radius": 0.08,
       "width": 0.04,
-      "offset": [0.2, -0.06, 0.22],
+      "offset": [0.2, 0, -0.22],
       "motor": true
     },
     {
       "side": "front_right",
       "radius": 0.08,
       "width": 0.04,
-      "offset": [0.2, -0.06, -0.22],
+      "offset": [0.2, 0, 0.22],
       "motor": true
     },
     {
       "side": "rear_left",
       "radius": 0.08,
       "width": 0.04,
-      "offset": [-0.2, -0.06, 0.22],
+      "offset": [-0.2, 0, -0.22],
       "motor": true
     },
     {
       "side": "rear_right",
       "radius": 0.08,
       "width": 0.04,
-      "offset": [-0.2, -0.06, -0.22],
+      "offset": [-0.2, 0, 0.22],
       "motor": true
     }
   ],

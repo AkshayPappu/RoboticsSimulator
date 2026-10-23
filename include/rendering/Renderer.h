@@ -26,8 +26,8 @@ struct RendererConfig {
     std::string windowTitle = "Robotics Simulator";
     bool showGrid = true;
     bool showAxes = true;
-    double cameraX = -8.0, cameraY = 5.0, cameraZ = -8.0;
-    double lookAtX = 0.0, lookAtY = 0.0, lookAtZ = 0.0;
+    double cameraX = -2.2, cameraY = 1.5, cameraZ = -2.2;
+    double lookAtX = 0.0, lookAtY = 0.12, lookAtZ = 0.0;
 };
 
 class SimEventReceiver;
@@ -49,6 +49,7 @@ public:
 
     void SetWindowTitle(const std::string& title);
     void BindAll();
+    void ShutdownImGui();
     void SetShowGrid(bool show);
     bool GetShowGrid() const { return m_showGrid; }
 

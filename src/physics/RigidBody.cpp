@@ -6,6 +6,7 @@
 #include <chrono/assets/ChVisualShapeCylinder.h>
 #include <chrono/assets/ChVisualModel.h>
 #include <chrono/assets/ChColor.h>
+#include <chrono/collision/ChCollisionModel.h>
 #include <chrono/utils/ChConstants.h>
 
 namespace robosim {
@@ -135,7 +136,7 @@ std::shared_ptr<RigidBody> RigidBody::CreateGround(const Material& material) {
     body->SetName("ground");
 
     rb->m_body = body;
-    rb->SetColor(0.45f, 0.52f, 0.38f);
+    rb->SetColor(0.32f, 0.48f, 0.28f);
     return rb;
 }
 
@@ -217,7 +218,19 @@ void RigidBody::SetColor(float r, float g, float b) {
     if (!vis) return;
     auto color = chrono::ChColor(r, g, b);
     for (unsigned int i = 0; i < vis->GetNumShapes(); ++i) {
-        vis->GetShape(i)->SetColor(color);
+        auto shape = vis->GetShape(i);
+        shape->SetColor(color);
+        shape->SetOpacity(1.0f);
+    }
+}
+
+void RigidBody::SetCollisionFamily(int family, bool collideWithSameFamily) {
+    if (!m_body) return;
+    auto model = m_body->GetCollisionModel();
+    if (!model) return;
+    model->SetFamily(family);
+    if (!collideWithSameFamily) {
+        model->DisallowCollisionsWith(family);
     }
 }
 

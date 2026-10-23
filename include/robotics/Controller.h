@@ -32,8 +32,8 @@ public:
 
 private:
     Renderer& m_renderer;
-    double m_speed = 5.0;
-    double m_turnSpeed = 3.0;
+    double m_speed = 8.0;
+    double m_turnSpeed = 4.0;
 
     bool m_keyForward = false;
     bool m_keyBackward = false;

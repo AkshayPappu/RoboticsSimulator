@@ -5,6 +5,8 @@
 #include "robotics/Motor.h"
 #include "robotics/Sensor.h"
 
+#include <chrono/physics/ChLinkBase.h>
+#include <chrono/assets/ChVisualShapeBox.h>
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include <cmath>
@@ -19,17 +21,17 @@ Robot::~Robot() = default;
 
 static RobotConfig DefaultTwoWheelConfig(const RobotConfig& base) {
     RobotConfig cfg = base;
-    if (cfg.wheels.empty()) {
+    if (cfg.wheels.empty() && cfg.wheelRadius > 0.0) {
         WheelSpec left;
         left.name = "left_wheel";
         left.radius = cfg.wheelRadius;
         left.width = cfg.wheelWidth;
         left.mass = cfg.wheelMass;
         left.offsetY = cfg.wheelOffsetY;
-        left.offsetZ = cfg.wheelOffsetZ;
+        left.offsetZ = -cfg.wheelOffsetZ;  // -Z is left when +X is forward, Y-up
         WheelSpec right = left;
         right.name = "right_wheel";
-        right.offsetZ = -cfg.wheelOffsetZ;
+        right.offsetZ = cfg.wheelOffsetZ;
         cfg.wheels.push_back(left);
         cfg.wheels.push_back(right);
     }
@@ -46,48 +48,56 @@ static RobotConfig DefaultTwoWheelConfig(const RobotConfig& base) {
 
 void Robot::AttachWheelsAndCasters(PhysicsWorld& world) {
     auto chassisBody = m_chassis->GetChBody();
+    const int kRobotFamily = 1;
 
     Material wheelMat;
-    wheelMat.friction = 0.8;
+    wheelMat.friction = 1.2;
+
+    // 90 deg about X: cylinder's Y axis becomes Z (axle), so it looks like a wheel
+    const double half = 0.7071067811865476;
 
     for (const auto& spec : m_config.wheels) {
         BodyTransform t;
         t.px = m_config.spawnX + spec.offsetX;
-        t.py = m_config.spawnY + spec.offsetY;
+        t.py = spec.radius;  // sit on the ground plane y=0
         t.pz = m_config.spawnZ + spec.offsetZ;
+        t.qw = half;
+        t.qx = half;
+        t.qy = 0;
+        t.qz = 0;
 
         auto wheel = RigidBody::CreateCylinder(spec.radius, spec.width, spec.mass, t, wheelMat);
         wheel->SetName(spec.name);
-        wheel->SetColor(0.12f, 0.12f, 0.12f);
+        wheel->SetColor(0.08f, 0.08f, 0.08f);
+        wheel->SetCollisionFamily(kRobotFamily, false);
         world.AddBody(wheel);
         m_wheels.push_back(wheel);
 
+        chrono::ChVector3d anchor(t.px, t.py, t.pz);
+        chrono::ChVector3d axis(0, 0, 1);
         if (spec.motor) {
-            chrono::ChVector3d anchor(t.px, t.py, t.pz);
-            chrono::ChVector3d axis(0, 0, 1);
             auto motor = Motor::CreateSpeedMotor(world, chassisBody, wheel->GetChBody(), anchor, axis);
             motor->SetMaxSpeed(m_config.maxMotorSpeed);
             motor->SetMaxTorque(m_config.maxTorque);
             m_motors.push_back(motor);
         } else {
-            chrono::ChVector3d anchor(t.px, t.py, t.pz);
-            auto joint = Joint::CreateRevolute(world, chassisBody, wheel->GetChBody(),
-                                               anchor, chrono::ChVector3d(0, 0, 1));
+            auto joint = Joint::CreateRevolute(world, chassisBody, wheel->GetChBody(), anchor, axis);
             m_joints.push_back(joint);
         }
     }
 
     Material casterMat;
-    casterMat.friction = 0.2;
+    casterMat.friction = 0.3;
     for (const auto& spec : m_config.casters) {
         BodyTransform t;
         t.px = m_config.spawnX + spec.offsetX;
-        t.py = m_config.spawnY + spec.offsetY;
+        t.py = spec.radius;
         t.pz = m_config.spawnZ + spec.offsetZ;
 
         auto caster = RigidBody::CreateSphere(spec.radius, spec.mass, t, casterMat);
         caster->SetName(spec.name);
         caster->SetColor(0.55f, 0.55f, 0.58f);
+        caster->SetCollisionFamily(kRobotFamily, false);
         world.AddBody(caster);
         m_casters.push_back(caster);
 
@@ -128,6 +138,7 @@ void Robot::AttachLinks(PhysicsWorld& world) {
         }
         linkBody->SetName(spec.name);
         linkBody->SetColor(0.75f, 0.70f, 0.25f);
+        linkBody->SetCollisionFamily(1, false);
         world.AddBody(linkBody);
         m_links.push_back(linkBody);
         bodies.push_back(linkBody);
@@ -169,6 +180,11 @@ void Robot::Build(PhysicsWorld& world, const RobotConfig& config) {
     Material chassisMat;
     chassisMat.friction = 0.4;
 
+    double wheelR = 0.0;
+    if (!m_config.wheels.empty()) wheelR = m_config.wheels.front().radius;
+    // Chassis sits just above the axle so wheels, not the box, carry the robot
+    m_config.spawnY = wheelR + m_config.chassisSizeY * 0.5 + 0.02;
+
     BodyTransform chassisTransform;
     chassisTransform.px = m_config.spawnX;
     chassisTransform.py = m_config.spawnY;
@@ -180,6 +196,15 @@ void Robot::Build(PhysicsWorld& world, const RobotConfig& config) {
     );
     m_chassis->SetName(m_config.name.empty() ? "chassis" : m_config.name);
     m_chassis->SetColor(0.20f, 0.45f, 0.85f);
+    m_chassis->SetCollisionFamily(1, false);
+
+    // Nose: shows which way is forward so WASD direction is obvious
+    auto nose = chrono_types::make_shared<chrono::ChVisualShapeBox>(
+        m_config.chassisSizeX * 0.28, m_config.chassisSizeY * 0.45, m_config.chassisSizeZ * 0.35);
+    nose->SetColor(chrono::ChColor(0.95f, 0.75f, 0.15f));
+    m_chassis->GetChBody()->AddVisualShape(
+        nose, chrono::ChFramed(chrono::ChVector3d(m_config.chassisSizeX * 0.38, m_config.chassisSizeY * 0.35, 0)));
+
     world.AddBody(m_chassis);
 
     AttachWheelsAndCasters(world);
@@ -243,6 +268,9 @@ void Robot::BuildFromJson(PhysicsWorld& world, const std::string& jsonPath) {
             }
             cfg.wheels.push_back(spec);
         }
+        if (cfg.wheels.empty()) {
+            cfg.wheelRadius = 0.0;  // JSON listed wheels but none — don't auto-add
+        }
     }
 
     if (j.contains("casters") && j["casters"].is_array()) {
@@ -256,6 +284,9 @@ void Robot::BuildFromJson(PhysicsWorld& world, const std::string& jsonPath) {
                 spec.offsetZ = c["offset"][2].get<double>();
             }
             cfg.casters.push_back(spec);
+        }
+        if (cfg.casters.empty()) {
+            cfg.casterRadius = 0.0;  // JSON listed casters but none — don't auto-add
         }
     } else {
         cfg.casterRadius = 0.0;  // don't auto-add caster if JSON omitted it
@@ -433,12 +464,74 @@ bool Robot::IsFlipped() const {
     return upY < 0.0;
 }
 
+void Robot::RemoveFromWorld(PhysicsWorld& world) {
+    for (auto& motor : m_motors) {
+        if (motor && motor->GetChLink()) {
+            world.RemoveLink(motor->GetChLink());
+        }
+    }
+    for (auto& joint : m_joints) {
+        if (joint && joint->GetChLink()) {
+            world.RemoveLink(joint->GetChLink());
+        }
+    }
+
+    auto removeBody = [&](std::shared_ptr<RigidBody> body) {
+        if (body) world.RemoveBody(body);
+    };
+    removeBody(m_chassis);
+    for (auto& w : m_wheels) removeBody(w);
+    for (auto& c : m_casters) removeBody(c);
+    for (auto& l : m_links) removeBody(l);
+
+    m_chassis.reset();
+    m_wheels.clear();
+    m_casters.clear();
+    m_links.clear();
+    m_joints.clear();
+    m_motors.clear();
+    m_sensors.clear();
+}
+
 void Robot::Reset(double x, double y, double z) {
-    if (m_chassis) {
-        m_chassis->SetPosition(x, y, z);
-        m_chassis->SetRotation(1, 0, 0, 0);
-        m_chassis->SetLinearVelocity(0, 0, 0);
-        m_chassis->SetAngularVelocity(0, 0, 0);
+    const double cy = m_config.spawnY;
+    const double half = 0.7071067811865476;
+
+    auto resetBody = [](const std::shared_ptr<RigidBody>& body,
+                        double px, double py, double pz,
+                        double qw, double qx, double qy, double qz) {
+        if (!body) return;
+        body->SetPosition(px, py, pz);
+        body->SetRotation(qw, qx, qy, qz);
+        body->SetLinearVelocity(0, 0, 0);
+        body->SetAngularVelocity(0, 0, 0);
+    };
+
+    resetBody(m_chassis, x, y, z, 1, 0, 0, 0);
+
+    for (size_t i = 0; i < m_wheels.size() && i < m_config.wheels.size(); ++i) {
+        const auto& spec = m_config.wheels[i];
+        resetBody(m_wheels[i],
+                  x + spec.offsetX,
+                  y + (spec.radius - cy),
+                  z + spec.offsetZ,
+                  half, half, 0, 0);
+    }
+    for (size_t i = 0; i < m_casters.size() && i < m_config.casters.size(); ++i) {
+        const auto& spec = m_config.casters[i];
+        resetBody(m_casters[i],
+                  x + spec.offsetX,
+                  y + (spec.radius - cy),
+                  z + spec.offsetZ,
+                  1, 0, 0, 0);
+    }
+    for (size_t i = 0; i < m_links.size() && i < m_config.links.size(); ++i) {
+        const auto& spec = m_config.links[i];
+        resetBody(m_links[i],
+                  x + spec.offsetX,
+                  y + spec.offsetY,
+                  z + spec.offsetZ,
+                  1, 0, 0, 0);
     }
     SetWheelSpeeds(0, 0);
 }

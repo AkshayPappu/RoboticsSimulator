@@ -10,6 +10,7 @@
 #include "robotics/Controller.h"
 
 #include <fstream>
+#include <functional>
 #include <nlohmann/json.hpp>
 
 #include <imgui.h>
@@ -31,8 +32,7 @@ void EditorUI::Initialize(Simulation& sim) {
     m_sim = &sim;
     m_initialized = true;
 
-    Log("[Editor] Initialized");
-    Log("[Editor] Drive: arrow keys | Camera: Irrlicht mouse | Grid: View menu");
+    Log("[Editor] Click the 3D window, then drive with W A S D or arrow keys.");
 }
 
 void EditorUI::Render() {
@@ -61,8 +61,7 @@ void EditorUI::Render() {
     if (m_state.showInspector)     RenderInspectorPanel();
     if (m_state.showConsole)       RenderConsolePanel();
     if (m_state.showRobotBuilder)  RenderRobotBuilderPanel();
-
-    RenderPerformanceOverlay();
+    if (m_state.showHelp)          RenderHelpOverlay();
 
     if (m_state.showDemoWindow) {
         ImGui::ShowDemoWindow(&m_state.showDemoWindow);
@@ -119,9 +118,24 @@ void EditorUI::RenderMenuBar() {
             ImGui::MenuItem("Toolbar", nullptr, &m_state.showToolbar);
             ImGui::MenuItem("Console", nullptr, &m_state.showConsole);
             ImGui::MenuItem("Robot Builder", nullptr, &m_state.showRobotBuilder);
-            ImGui::MenuItem("Grid", nullptr, &m_state.showGrid);
+            ImGui::MenuItem("Help overlay", nullptr, &m_state.showHelp);
             ImGui::Separator();
             ImGui::MenuItem("ImGui Demo", nullptr, &m_state.showDemoWindow);
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Robot")) {
+            if (ImGui::MenuItem("Differential drive")) {
+                SpawnRobotPreset("differential_drive.json");
+            }
+            if (ImGui::MenuItem("Four-wheel")) {
+                SpawnRobotPreset("four_wheel.json");
+            }
+            if (ImGui::MenuItem("Robot arm")) {
+                SpawnRobotPreset("robot_arm.json");
+            }
+            ImGui::Separator();
+            ImGui::MenuItem("Open builder...", nullptr, &m_state.showRobotBuilder);
             ImGui::EndMenu();
         }
 
@@ -144,7 +158,8 @@ void EditorUI::RenderMenuBar() {
             if (ImGui::MenuItem("Reset", "R")) {
                 if (m_sim->GetRobot()) {
                     auto spawn = m_sim->GetSceneManager().GetSpawnPoint();
-                    m_sim->GetRobot()->Reset(spawn.x, spawn.y, spawn.z);
+                    const auto& cfg = m_sim->GetRobot()->GetConfig();
+                    m_sim->GetRobot()->Reset(spawn.x, cfg.spawnY, spawn.z);
                     Log("[Editor] Robot reset");
                 }
             }
@@ -194,68 +209,13 @@ void EditorUI::RenderMenuBar() {
 // --- Toolbar ---
 
 void EditorUI::RenderToolbar() {
-    ImGui::SetNextWindowPos(ImVec2(0, 20), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_FirstUseEver);
-
-    ImGui::Begin("Toolbar", &m_state.showToolbar, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize);
+    ImGui::SetNextWindowPos(ImVec2(8, 26), ImGuiCond_Always);
+    ImGui::SetNextWindowBgAlpha(0.92f);
+    ImGui::Begin("##hud", &m_state.showToolbar,
+                 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize |
+                 ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
 
     RenderSimulationControls();
-
-    ImGui::Separator();
-
-    // Tool selection
-    bool isSelect = (m_state.activeTool == EditorTool::Select);
-    bool isTranslate = (m_state.activeTool == EditorTool::Translate);
-    bool isRotate = (m_state.activeTool == EditorTool::Rotate);
-
-    if (ImGui::RadioButton("Select", isSelect)) m_state.activeTool = EditorTool::Select;
-    ImGui::SameLine();
-    if (ImGui::RadioButton("Move", isTranslate)) m_state.activeTool = EditorTool::Translate;
-    ImGui::SameLine();
-    if (ImGui::RadioButton("Rotate", isRotate)) m_state.activeTool = EditorTool::Rotate;
-
-    ImGui::Separator();
-
-    // Add object
-    const char* objTypes[] = { "Box", "Sphere", "Cylinder" };
-    ImGui::Combo("Type", &m_newObjType, objTypes, 3);
-    ImGui::DragFloat3("Size", m_newObjSize, 0.1f, 0.01f, 100.0f);
-    ImGui::DragFloat3("Position", m_newObjPos, 0.1f, -100.0f, 100.0f);
-    ImGui::DragFloat("Mass", &m_newObjMass, 0.1f, 0.0f, 1000.0f);
-
-    if (ImGui::Button("Add Object")) {
-        Material mat;
-        BodyTransform t;
-        t.px = m_newObjPos[0];
-        t.py = m_newObjPos[1];
-        t.pz = m_newObjPos[2];
-
-        std::shared_ptr<RigidBody> body;
-        switch (m_newObjType) {
-            case 0:
-                body = RigidBody::CreateBox(m_newObjSize[0], m_newObjSize[1], m_newObjSize[2],
-                                            m_newObjMass, t, mat);
-                break;
-            case 1:
-                body = RigidBody::CreateSphere(m_newObjSize[0], m_newObjMass, t, mat);
-                break;
-            case 2:
-                body = RigidBody::CreateCylinder(m_newObjSize[0], m_newObjSize[1],
-                                                  m_newObjMass, t, mat);
-                break;
-        }
-
-        if (body) {
-            body->SetName("new_object");
-            m_sim->GetSceneManager().AddObject(body);
-            if (!m_sim->GetRenderer().GetVisualSystem()) {
-            } else {
-                m_sim->GetRenderer().BindAll();
-            }
-            Log("[Editor] Added new object");
-        }
-    }
-
     ImGui::End();
 }
 
@@ -281,7 +241,8 @@ void EditorUI::RenderSimulationControls() {
     if (ImGui::Button("Reset")) {
         if (m_sim->GetRobot()) {
             auto spawn = m_sim->GetSceneManager().GetSpawnPoint();
-            m_sim->GetRobot()->Reset(spawn.x, spawn.y, spawn.z);
+            const auto& cfg = m_sim->GetRobot()->GetConfig();
+            m_sim->GetRobot()->Reset(spawn.x, cfg.spawnY, spawn.z);
         }
     }
 
@@ -291,6 +252,18 @@ void EditorUI::RenderSimulationControls() {
     m_sim->SetSpeedMultiplier(m_state.speedMultiplier);
 
     ImGui::Text("Time: %.3f s  |  Step: %d", m_sim->GetSimTime(), m_sim->GetStepCount());
+
+    if (auto* robot = m_sim->GetRobot()) {
+        double x, y, z;
+        robot->GetPosition(x, y, z);
+        ImGui::Text("Robot  x=%.2f  y=%.2f  z=%.2f   heading %.0f deg",
+                    x, y, z, robot->GetHeading() * 180.0 / 3.14159);
+        ImGui::Text("Wheels L=%.1f  R=%.1f rad/s   %s",
+                    robot->GetLeftWheelSpeed(), robot->GetRightWheelSpeed(),
+                    robot->IsFlipped() ? "FLIPPED - press Reset" : "W/S drive  A/D turn");
+    } else {
+        ImGui::TextUnformatted("No robot. Robot menu -> Differential drive");
+    }
 }
 
 // --- Scene Hierarchy ---
@@ -478,11 +451,21 @@ void EditorUI::RenderRobotBuilderPanel() {
         "robots/four_wheel.json",
         "robots/robot_arm.json"
     };
+    auto replaceRobot = [&](const std::function<void(Robot&)>& builder) {
+        if (m_sim->GetRobot()) {
+            m_sim->GetRobot()->RemoveFromWorld(m_sim->GetWorld());
+        }
+        auto robot = std::make_shared<Robot>();
+        builder(*robot);
+        m_sim->SetRobot(robot);
+        m_sim->GetRenderer().BindAll();
+    };
+
     if (ImGui::Combo("Preset", &m_presetIndex, presets, 4)) {
         if (m_presetIndex > 0) {
-            auto robot = std::make_shared<Robot>();
-            robot->BuildFromJson(m_sim->GetWorld(), presets[m_presetIndex]);
-            m_sim->SetRobot(robot);
+            replaceRobot([&](Robot& robot) {
+                robot.BuildFromJson(m_sim->GetWorld(), presets[m_presetIndex]);
+            });
             Log(std::string("[Editor] Loaded preset ") + presets[m_presetIndex]);
         }
     }
@@ -574,9 +557,9 @@ void EditorUI::RenderRobotBuilderPanel() {
         config.spawnY = spawn.y;
         config.spawnZ = spawn.z;
 
-        auto robot = std::make_shared<Robot>();
-        robot->Build(m_sim->GetWorld(), config);
-        m_sim->SetRobot(robot);
+        replaceRobot([&](Robot& robot) {
+            robot.Build(m_sim->GetWorld(), config);
+        });
 
         Log("[Editor] Built new robot");
     }
@@ -602,9 +585,9 @@ void EditorUI::RenderRobotBuilderPanel() {
         ImGui::Text("Robot JSON path:");
         ImGui::InputText("##robotpath", m_robotPathBuf, sizeof(m_robotPathBuf));
         if (ImGui::Button("Load")) {
-            auto robot = std::make_shared<Robot>();
-            robot->BuildFromJson(m_sim->GetWorld(), m_robotPathBuf);
-            m_sim->SetRobot(robot);
+            replaceRobot([&](Robot& robot) {
+                robot.BuildFromJson(m_sim->GetWorld(), m_robotPathBuf);
+            });
             Log(std::string("[Editor] Loaded robot from: ") + m_robotPathBuf);
             ImGui::CloseCurrentPopup();
         }
@@ -637,20 +620,36 @@ void EditorUI::RenderRobotBuilderPanel() {
 
 // --- Performance Overlay ---
 
-void EditorUI::RenderPerformanceOverlay() {
-    ImGui::SetNextWindowPos(ImVec2(10, 30), ImGuiCond_Always);
-    ImGui::SetNextWindowBgAlpha(0.5f);
-    ImGui::Begin("##perfoverlay", nullptr,
+void EditorUI::RenderHelpOverlay() {
+    ImGuiIO& io = ImGui::GetIO();
+    float y = io.DisplaySize.y > 16.0f ? io.DisplaySize.y - 8.0f : 700.0f;
+    ImGui::SetNextWindowPos(ImVec2(8, y), ImGuiCond_Always, ImVec2(0, 1));
+    ImGui::SetNextWindowBgAlpha(0.85f);
+    ImGui::Begin("##help", nullptr,
                  ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
                  ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav |
                  ImGuiWindowFlags_NoMove);
 
-    ImGui::Text("FPS: %.1f (%.2f ms)", m_fps, m_frameTimeMs);
-    ImGui::Text("Sim: %.3f s | Step: %d", m_sim->GetSimTime(), m_sim->GetStepCount());
-    ImGui::Text("Bodies: %zu", m_sim->GetWorld().GetBodies().size());
-    ImGui::Text("Contacts: %d", m_sim->GetWorld().GetChSystem().GetNumContacts());
-
+    ImGui::Text("Click this 3D window, then hold W to drive (yellow nose = forward)");
+    ImGui::Text("W/S or Up/Down = forward/back    A/D or Left/Right = turn");
+    ImGui::Text("Camera: left-drag orbit, wheel zoom, right-drag pan");
+    ImGui::Text("FPS %.0f   t=%.1fs", m_fps, m_sim->GetSimTime());
     ImGui::End();
+}
+
+void EditorUI::SpawnRobotPreset(const char* fileName) {
+    std::string path = fileName;
+#ifdef SIM_ROBOTS_DIR
+    path = std::string(SIM_ROBOTS_DIR) + "/" + fileName;
+#endif
+    if (m_sim->GetRobot()) {
+        m_sim->GetRobot()->RemoveFromWorld(m_sim->GetWorld());
+    }
+    auto robot = std::make_shared<Robot>();
+    robot->BuildFromJson(m_sim->GetWorld(), path);
+    m_sim->SetRobot(robot);
+    m_sim->GetRenderer().BindAll();
+    Log(std::string("[Editor] Spawned ") + path);
 }
 
 }  // namespace robosim

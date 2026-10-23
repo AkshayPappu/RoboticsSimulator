@@ -42,6 +42,7 @@ public:
     double GetAppliedTorque() const;
 
     MotorMode GetMode() const { return m_mode; }
+    std::shared_ptr<chrono::ChLinkMotorRotation> GetChLink() const { return m_motor; }
 
     double GetMaxSpeed() const { return m_maxSpeed; }
     void SetMaxSpeed(double maxSpeed) { m_maxSpeed = maxSpeed; }

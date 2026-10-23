@@ -19,7 +19,7 @@ ChronoEngine::ChronoEngine(ContactMethod method)
 
     if (method == ContactMethod::NSC) {
         auto solver = std::make_shared<chrono::ChSolverPSOR>();
-        solver->SetMaxIterations(50);
+        solver->SetMaxIterations(150);
         m_system->SetSolver(solver);
     }
 

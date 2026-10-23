@@ -10,6 +10,8 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
+#include <cmath>
+#include <algorithm>
 
 namespace robosim {
 
@@ -69,6 +71,7 @@ void Simulation::Run() {
         frameStart = std::chrono::high_resolution_clock::now();
 
         if (m_renderer && !m_renderer->IsRunning()) {
+            m_renderer->ShutdownImGui();
             break;
         }
 
@@ -82,12 +85,14 @@ void Simulation::Run() {
             if (m_controller && m_robot) {
                 m_controller->Update(*m_robot, dt);
             }
-            if (m_robot) {
-                m_robot->UpdateSensors(*m_world);
-            }
+            // Sensors are sampled from the editor/inspector, not every physics tick,
+            // so a bad raycast cannot take down the whole sim loop.
 
-            int substeps = static_cast<int>(m_speedMultiplier);
-            if (substeps < 1) substeps = 1;
+            // Keep sim time close to wall-clock: 1ms steps × ~16 per 60fps frame = realtime
+            double frameDt = (m_config.renderFps > 1.0) ? (1.0 / m_config.renderFps) : (1.0 / 60.0);
+            int substeps = static_cast<int>(std::lround(
+                (frameDt / m_config.physicsTimestep) * m_speedMultiplier));
+            substeps = std::clamp(substeps, 1, 64);
             for (int i = 0; i < substeps; ++i) {
                 m_world->Step();
                 m_stepCount++;

@@ -20,29 +20,37 @@ KeyboardController::KeyboardController(Renderer& renderer)
 KeyboardController::~KeyboardController() = default;
 
 void KeyboardController::OnKeyEvent(int key, bool pressed) {
-    if (key == KEY_UP)    m_keyForward = pressed;
-    if (key == KEY_DOWN)  m_keyBackward = pressed;
-    if (key == KEY_LEFT)  m_keyLeft = pressed;
-    if (key == KEY_RIGHT) m_keyRight = pressed;
+    if (key == KEY_UP || key == irr::KEY_KEY_W)    m_keyForward = pressed;
+    if (key == KEY_DOWN || key == irr::KEY_KEY_S)  m_keyBackward = pressed;
+    if (key == KEY_LEFT || key == irr::KEY_KEY_A)  m_keyLeft = pressed;
+    if (key == KEY_RIGHT || key == irr::KEY_KEY_D) m_keyRight = pressed;
 }
 
 void KeyboardController::Update(Robot& robot, double dt) {
+    (void)dt;
+
+    // Poll so held keys still drive even if a key-down event was missed
+    const bool forward  = m_keyForward  || m_renderer.IsKeyPressed(KEY_UP)    || m_renderer.IsKeyPressed(irr::KEY_KEY_W);
+    const bool backward = m_keyBackward || m_renderer.IsKeyPressed(KEY_DOWN)  || m_renderer.IsKeyPressed(irr::KEY_KEY_S);
+    const bool leftTurn = m_keyLeft     || m_renderer.IsKeyPressed(KEY_LEFT)  || m_renderer.IsKeyPressed(irr::KEY_KEY_A);
+    const bool rightTurn= m_keyRight    || m_renderer.IsKeyPressed(KEY_RIGHT) || m_renderer.IsKeyPressed(irr::KEY_KEY_D);
+
     double left = 0.0;
     double right = 0.0;
 
-    if (m_keyForward) {
+    if (forward) {
         left += m_speed;
         right += m_speed;
     }
-    if (m_keyBackward) {
+    if (backward) {
         left -= m_speed;
         right -= m_speed;
     }
-    if (m_keyLeft) {
+    if (leftTurn) {
         left -= m_turnSpeed;
         right += m_turnSpeed;
     }
-    if (m_keyRight) {
+    if (rightTurn) {
         left += m_turnSpeed;
         right -= m_turnSpeed;
     }

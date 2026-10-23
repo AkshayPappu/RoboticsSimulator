@@ -24,6 +24,7 @@ void DistanceSensor::Update(chrono::ChSystem& system) {
     m_hit = false;
     m_distance = m_maxRange;
     if (!m_body) return;
+    if (system.GetChTime() < 0.05) return;
 
     auto coll = system.GetCollisionSystem();
     if (!coll) return;
@@ -71,6 +72,7 @@ void ContactSensor::Update(chrono::ChSystem& system) {
     m_inContact = false;
     m_contactCount = 0;
     if (!m_body) return;
+    if (system.GetChTime() < 0.05) return;
 
     auto container = system.GetContactContainer();
     if (!container) return;

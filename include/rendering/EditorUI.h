@@ -21,19 +21,20 @@ enum class EditorTool {
 };
 
 struct EditorState {
-    bool showHierarchy = true;
-    bool showInspector = true;
+    bool showHierarchy = false;
+    bool showInspector = false;
     bool showToolbar = true;
-    bool showConsole = true;
-    bool showRobotBuilder = true;
+    bool showConsole = false;
+    bool showRobotBuilder = false;
     bool showDemoWindow = false;
-    bool showGrid = true;
+    bool showGrid = false;
+    bool showHelp = true;
 
     EditorTool activeTool = EditorTool::Select;
     int selectedObjectIndex = -1;
 
     // Simulation control
-    bool isPlaying = false;
+    bool isPlaying = true;
     bool isPaused = false;
     float speedMultiplier = 1.0f;
 
@@ -71,7 +72,8 @@ private:
     void RenderConsolePanel();
     void RenderRobotBuilderPanel();
     void RenderSimulationControls();
-    void RenderPerformanceOverlay();
+    void RenderHelpOverlay();
+    void SpawnRobotPreset(const char* fileName);
 
     Simulation* m_sim = nullptr;
     EditorState m_state;
