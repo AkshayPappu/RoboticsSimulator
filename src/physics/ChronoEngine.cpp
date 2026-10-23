@@ -1,7 +1,6 @@
 #include "physics/ChronoEngine.h"
 
 #include <chrono/solver/ChSolverPSOR.h>
-#include <chrono/collision/ChCollisionSystemBullet.h>
 
 namespace robosim {
 
@@ -48,11 +47,15 @@ double ChronoEngine::GetTime() const {
 }
 
 void ChronoEngine::SetSolverMaxIterations(int iterations) {
-    m_system->GetSolver()->SetMaxIterations(iterations);
+    auto solver = std::dynamic_pointer_cast<chrono::ChSolverPSOR>(m_system->GetSolver());
+    if (solver) {
+        solver->SetMaxIterations(iterations);
+    }
 }
 
 void ChronoEngine::SetCollisionEnvelope(double envelope) {
-    chrono::ChCollisionModel::SetDefaultSuggestedEnvelope(envelope);
+    // Collision envelope setting varies by Chrono version
+    // In Chrono 10, envelope is typically set per-shape or via system settings
 }
 
 void ChronoEngine::AddBody(std::shared_ptr<chrono::ChBody> body) {

@@ -15,18 +15,24 @@ option(ENABLE_HEADLESS "Build with headless support (no visualization)" OFF)
 # Dependencies
 # ----------------------------------------------------------------------------
 
-# Project Chrono
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+# MSYS2 paths - override the hardcoded build-machine paths in ChronoConfig
+set(EIGEN3_INCLUDE_DIR "C:/msys64/ucrt64/include/eigen3" CACHE PATH "Eigen3 include dir" FORCE)
+set(Eigen3_DIR "C:/msys64/ucrt64/share/eigen3/cmake" CACHE PATH "Eigen3 cmake dir" FORCE)
+set(Irrlicht_INCLUDE_DIR "C:/msys64/ucrt64/include/irrlicht" CACHE PATH "Irrlicht include dir" FORCE)
+set(Irrlicht_LIBRARY "C:/msys64/ucrt64/lib/libirrlicht.dll.a" CACHE PATH "Irrlicht library" FORCE)
 
-find_package(Chrono REQUIRED
+# Project Chrono
+find_package(Chrono
     COMPONENTS Irrlicht
     CONFIG
+    PATHS "C:/msys64/ucrt64/lib/cmake/Chrono"
 )
 
 if(Chrono_FOUND)
-    message(STATUS "Chrono found: ${CHRONO_INCLUDE_DIRS}")
+    message(STATUS "Chrono found: targets = ${CHRONO_TARGETS}")
+    message(STATUS "Chrono data dir: ${CHRONO_DATA_DIR}")
 else()
-    message(FATAL_ERROR "Project Chrono not found. Set Chrono_DIR to the Chrono install/cmake directory.")
+    message(FATAL_ERROR "Project Chrono not found. Install via: pacman -S mingw-w64-ucrt-x86_64-projectchrono")
 endif()
 
 # nlohmann/json (header-only JSON library)
@@ -49,7 +55,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(imgui)
 
-# Build ImGui as a library with Irrlicht backend
+# Build ImGui as a library with OpenGL3 backend
 set(IMGUI_DIR ${imgui_SOURCE_DIR})
 add_library(imgui STATIC
     ${IMGUI_DIR}/imgui.cpp
@@ -64,21 +70,26 @@ target_include_directories(imgui PUBLIC
     ${IMGUI_DIR}/backends
 )
 
-# ImGuizmo for 3D gizmos
-FetchContent_Declare(
-    imguizmo
-    GIT_REPOSITORY https://github.com/CedricGuillemet/ImGuizmo.git
-    GIT_TAG        master
-    GIT_SHALLOW    TRUE
-)
-FetchContent_MakeAvailable(imguizmo)
+# ImGuizmo for 3D gizmos — download single file
+set(IMGUIZMO_DIR ${CMAKE_BINARY_DIR}/imguizmo)
+file(MAKE_DIRECTORY ${IMGUIZMO_DIR})
 
-set(IMGUIZMO_DIR ${imguizmo_SOURCE_DIR})
-add_library(imguizmo STATIC
-    ${IMGUIZMO_DIR}/ImGuizmo.cpp
-)
-target_include_directories(imguizmo PUBLIC ${IMGUIZMO_DIR})
-target_link_libraries(imguizmo PUBLIC imgui)
+if(NOT EXISTS ${IMGUIZMO_DIR}/ImGuizmo.h)
+    file(DOWNLOAD
+        "https://raw.githubusercontent.com/CedricGuillemet/ImGuizmo/master/ImGuizmo.h"
+        ${IMGUIZMO_DIR}/ImGuizmo.h
+    )
+endif()
+if(NOT EXISTS ${IMGUIZMO_DIR}/ImGuizmo.cpp)
+    file(DOWNLOAD
+        "https://raw.githubusercontent.com/CedricGuillemet/ImGuizmo/master/ImGuizmo.cpp"
+        ${IMGUIZMO_DIR}/ImGuizmo.cpp
+    )
+endif()
+
+add_library(imguizmo_lib STATIC ${IMGUIZMO_DIR}/ImGuizmo.cpp)
+target_include_directories(imguizmo_lib PUBLIC ${IMGUIZMO_DIR})
+target_link_libraries(imguizmo_lib PUBLIC imgui)
 
 # ----------------------------------------------------------------------------
 # Source files
@@ -125,39 +136,24 @@ add_executable(${PROJECT_NAME} ${SIMULATOR_SOURCES} ${SIMULATOR_HEADERS})
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/include
-    ${CHRONO_INCLUDE_DIRS}
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
-    ${CHRONO_CXX_FLAGS}
     "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
     "SIM_SCENES_DIR=\"${CMAKE_SOURCE_DIR}/scenes\""
     "SIM_ROBOTS_DIR=\"${CMAKE_SOURCE_DIR}/robots\""
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    ${CHRONO_LIBRARIES}
+    ${CHRONO_TARGETS}
     nlohmann_json::nlohmann_json
     imgui
-    imguizmo
+    imguizmo_lib
 )
 
-# Chrono may require specific linker flags
-if(CHRONO_LINKER_FLAGS)
-    set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "${CHRONO_LINKER_FLAGS}")
-endif()
-
 # Copy Chrono DLLs to output directory on Windows
-if(WIN32)
-    if(CHRONO_DLL_NAMES)
-        foreach(DLL ${CHRONO_DLL_NAMES})
-            add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                    "${CHRONO_DLL_DIR}/${DLL}"
-                    "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
-            )
-        endforeach()
-    endif()
+if(WIN32 AND CHRONO_DLL_NAMES)
+    add_CHRONO_DLLS_copy_command()
 endif()
 
 # ----------------------------------------------------------------------------

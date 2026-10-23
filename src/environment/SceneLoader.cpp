@@ -171,7 +171,7 @@ std::shared_ptr<RigidBody> SceneLoader::ParseObject(
         double width = size.size() > 2 ? size[2] : 2.0;
 
         // Rotate the ramp by the slope angle around Z
-        double angleRad = slope * CH_PI / 180.0;
+        double angleRad = slope * 3.14159265358979323846 / 180.0;
         double halfAngle = angleRad / 2.0;
         transform.qw = std::cos(halfAngle);
         transform.qx = 0;

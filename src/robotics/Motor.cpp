@@ -2,6 +2,7 @@
 #include "core/PhysicsWorld.h"
 
 #include <chrono/functions/ChFunctionConst.h>
+#include <chrono/utils/ChConstants.h>
 #include <algorithm>
 #include <cmath>
 
@@ -13,11 +14,19 @@ chrono::ChFrame<> Motor::BuildFrame(
     const chrono::ChVector3d& anchor,
     const chrono::ChVector3d& axis)
 {
-    chrono::ChVector3d u, v;
-    axis.GetDirectionAxesAsX(u, v);
-    chrono::ChMatrix33<> rotMat;
-    rotMat.SetFromDirectionAxes(axis, u, v);
-    return chrono::ChFrame<>(anchor, rotMat.GetQuaternion());
+    // Build a frame where the Z-axis is the motor rotation axis
+    chrono::ChQuaterniond rot = chrono::QUNIT;
+    chrono::ChVector3d zAxis(0, 0, 1);
+    chrono::ChVector3d cross = zAxis.Cross(axis);
+    double dot = zAxis.Dot(axis);
+    if (cross.Length() > 1e-6) {
+        double angle = std::acos(std::clamp(dot, -1.0, 1.0));
+        cross.Normalize();
+        rot = chrono::QuatFromAngleAxis(angle, cross);
+    } else if (dot < 0) {
+        rot = chrono::QuatFromAngleAxis(chrono::CH_PI, chrono::ChVector3d(1, 0, 0));
+    }
+    return chrono::ChFrame<>(anchor, rot);
 }
 
 std::shared_ptr<Motor> Motor::CreateSpeedMotor(

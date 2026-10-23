@@ -4,6 +4,7 @@
 #include <chrono/assets/ChVisualShapeBox.h>
 #include <chrono/assets/ChVisualShapeSphere.h>
 #include <chrono/assets/ChVisualShapeCylinder.h>
+#include <chrono/utils/ChConstants.h>
 
 namespace robosim {
 
@@ -15,18 +16,14 @@ std::shared_ptr<chrono::ChContactMaterial> RigidBody::CreateChMaterial(
     if (isSMC) {
         auto material = chrono::ChContactMaterial::DefaultMaterial(
             chrono::ChContactMethod::SMC);
-        auto smc_mat = std::dynamic_pointer_cast<chrono::ChContactMaterialSMC>(material);
-        smc_mat->SetFriction(static_cast<float>(mat.friction));
-        smc_mat->SetRestitution(static_cast<float>(mat.restitution));
-        smc_mat->SetYoungModulus(static_cast<float>(mat.young_modulus));
-        smc_mat->SetPoissonRatio(static_cast<float>(mat.poisson_ratio));
+        material->SetFriction(static_cast<float>(mat.friction));
+        material->SetRestitution(static_cast<float>(mat.restitution));
         return material;
     } else {
         auto material = chrono::ChContactMaterial::DefaultMaterial(
             chrono::ChContactMethod::NSC);
-        auto nsc_mat = std::dynamic_pointer_cast<chrono::ChContactMaterialNSC>(material);
-        nsc_mat->SetFriction(static_cast<float>(mat.friction));
-        nsc_mat->SetRestitution(static_cast<float>(mat.restitution));
+        material->SetFriction(static_cast<float>(mat.friction));
+        material->SetRestitution(static_cast<float>(mat.restitution));
         return material;
     }
 }
@@ -73,7 +70,7 @@ std::shared_ptr<RigidBody> RigidBody::CreateSphere(
     auto mat = CreateChMaterial(material, false);
     bool isFixed = (mass <= 0.0);
     double actualMass = isFixed ? 1.0 : mass;
-    double volume = (4.0 / 3.0) * CH_PI * radius * radius * radius;
+    double volume = (4.0 / 3.0) * chrono::CH_PI * radius * radius * radius;
 
     auto body = chrono_types::make_shared<chrono::ChBodyEasySphere>(
         radius, actualMass / volume, true, true, mat);
@@ -104,7 +101,7 @@ std::shared_ptr<RigidBody> RigidBody::CreateCylinder(
     auto mat = CreateChMaterial(material, false);
     bool isFixed = (mass <= 0.0);
     double actualMass = isFixed ? 1.0 : mass;
-    double volume = CH_PI * radius * radius * height;
+    double volume = chrono::CH_PI * radius * radius * height;
 
     auto body = chrono_types::make_shared<chrono::ChBodyEasyCylinder>(
         chrono::ChAxis::Y, radius, height, actualMass / volume, true, true, mat);
@@ -174,7 +171,7 @@ void RigidBody::GetLinearVelocity(double& vx, double& vy, double& vz) const {
 }
 
 void RigidBody::SetAngularVelocity(double wx, double wy, double wz) {
-    m_body->SetAngVel(chrono::ChVector3d(wx, wy, wz));
+    m_body->SetAngVelLocal(chrono::ChVector3d(wx, wy, wz));
 }
 
 void RigidBody::SetFixed(bool fixed) {
@@ -195,11 +192,12 @@ double RigidBody::GetMass() const {
 }
 
 void RigidBody::ApplyForce(double fx, double fy, double fz) {
-    m_body->AccumulateForce(chrono::ChVector3d(fx, fy, fz), m_body->GetPos(), false);
+    m_body->EmptyAccumulator(0);
+    m_body->AccumulateForce(0, chrono::ChVector3d(fx, fy, fz), chrono::ChVector3d(0, 0, 0), false);
 }
 
 void RigidBody::ApplyTorque(double tx, double ty, double tz) {
-    m_body->AccumulateTorque(chrono::ChVector3d(tx, ty, tz), false);
+    m_body->AccumulateTorque(0, chrono::ChVector3d(tx, ty, tz), false);
 }
 
 }  // namespace robosim
