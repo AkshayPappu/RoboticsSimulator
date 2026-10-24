@@ -329,6 +329,35 @@ def arm_link_mesh(length, radius) -> Mesh:
     return m
 
 
+def beam_mesh(length: float, section: float = 0.04) -> Mesh:
+    mesh = Mesh()
+    mesh.usemtl("metal")
+    add_box(mesh, 0, 0, 0, length, section, section)
+    return mesh
+
+
+def plate_mesh(sx: float, sz: float, thick: float = 0.02) -> Mesh:
+    mesh = Mesh()
+    mesh.usemtl("metal")
+    add_box(mesh, 0, 0, 0, sx, thick, sz)
+    return mesh
+
+
+def axle_mesh(radius: float, length: float) -> Mesh:
+    mesh = Mesh()
+    mesh.usemtl("metal")
+    add_cyl(mesh, 0, 0, 0, radius, length, axis="y")
+    return mesh
+
+
+def bracket_mesh(size: float) -> Mesh:
+    mesh = Mesh()
+    mesh.usemtl("metal")
+    add_box(mesh, 0, size * 0.25, 0, size, size * 0.5, size * 0.5)
+    add_box(mesh, -size * 0.25, size * 0.75, 0, size * 0.5, size, size * 0.5)
+    return mesh
+
+
 def gripper_mesh() -> Mesh:
     m = Mesh()
     m.usemtl("metal")
@@ -460,6 +489,16 @@ def main() -> None:
         ("ground_plane.obj", ground_mesh(), mats(
             asphalt=(asphalt, (0.28, 0.30, 0.32)),
         )),
+        ("beam_short.obj", beam_mesh(0.20), mats(metal=(aluminum, (0.62, 0.64, 0.68)))),
+        ("beam_long.obj", beam_mesh(0.40), mats(metal=(aluminum, (0.58, 0.60, 0.64)))),
+        ("plate_small.obj", plate_mesh(0.20, 0.20), mats(metal=(aluminum, (0.66, 0.68, 0.72)))),
+        ("plate_large.obj", plate_mesh(0.40, 0.30), mats(metal=(aluminum, (0.60, 0.62, 0.66)))),
+        ("bracket_small.obj", bracket_mesh(0.08), mats(metal=(aluminum, (0.55, 0.57, 0.60)))),
+        ("bracket_large.obj", bracket_mesh(0.12), mats(metal=(aluminum, (0.50, 0.52, 0.56)))),
+        ("axle_short.obj", axle_mesh(0.015, 0.12), mats(metal=(aluminum, (0.70, 0.72, 0.75)))),
+        ("axle_long.obj", axle_mesh(0.015, 0.24), mats(metal=(aluminum, (0.68, 0.70, 0.73)))),
+        ("spacer_short.obj", axle_mesh(0.02, 0.03), mats(metal=(aluminum, (0.64, 0.66, 0.70)))),
+        ("spacer_long.obj", axle_mesh(0.03, 0.05), mats(metal=(aluminum, (0.60, 0.62, 0.66)))),
     ]
 
     for name, mesh, materials in kit:
@@ -650,6 +689,98 @@ def main() -> None:
             },
         ],
     }
+
+    def mount(mid: str, pos, role: str, axis=None) -> dict:
+        return {
+            "id": mid,
+            "pos": pos,
+            "role": role,
+            "axis": axis or [0.0, 0.0, 1.0],
+        }
+
+    def beam_part(pid: str, name: str, length: float) -> dict:
+        return {
+            "id": pid,
+            "name": name,
+            "category": "beam",
+            "mesh": f"parts/{pid}.obj",
+            "collision": {"shape": "box", "size": [length, 0.04, 0.04]},
+            "mass": round(0.35 * length / 0.20, 3),
+            "joint": "fixed",
+            "mounts": [
+                mount("end_a", [-length / 2, 0.0, 0.0], "structure"),
+                mount("end_b", [length / 2, 0.0, 0.0], "structure"),
+                mount("face", [0.0, 0.02, 0.0], "structure", [0.0, 1.0, 0.0]),
+            ],
+        }
+
+    def plate_part(pid: str, name: str, sx: float, sz: float) -> dict:
+        return {
+            "id": pid,
+            "name": name,
+            "category": "plate",
+            "mesh": f"parts/{pid}.obj",
+            "collision": {"shape": "box", "size": [sx, 0.02, sz]},
+            "mass": round(0.5 * sx * sz / 0.04, 3),
+            "joint": "fixed",
+            "mounts": [
+                mount("edge_a", [-sx / 2, 0.0, 0.0], "structure"),
+                mount("edge_b", [sx / 2, 0.0, 0.0], "structure"),
+                mount("face", [0.0, 0.01, 0.0], "structure", [0.0, 1.0, 0.0]),
+            ],
+        }
+
+    def bracket_part(pid: str, name: str, size: float) -> dict:
+        return {
+            "id": pid,
+            "name": name,
+            "category": "bracket",
+            "mesh": f"parts/{pid}.obj",
+            "collision": {"shape": "box", "size": [size, size, size * 0.5]},
+            "mass": round(0.15 * (size / 0.08) ** 3, 3),
+            "joint": "fixed",
+            "mounts": [
+                mount("foot", [0.0, 0.0, 0.0], "structure", [0.0, 1.0, 0.0]),
+                mount("upright", [-size * 0.25, size * 0.75, 0.0], "structure"),
+            ],
+        }
+
+    def axle_part(pid: str, name: str, radius: float, length: float, category: str) -> dict:
+        return {
+            "id": pid,
+            "name": name,
+            "category": category,
+            "mesh": f"parts/{pid}.obj",
+            "collision": {"shape": "cylinder", "radius": radius, "height": length},
+            "mass": round(40.0 * radius * radius * length, 3),
+            "joint": "revolute" if category == "axle" else "fixed",
+            "mounts": [
+                mount("end_a", [0.0, -length / 2, 0.0], "structure", [0.0, 1.0, 0.0]),
+                mount("end_b", [0.0, length / 2, 0.0], "structure", [0.0, 1.0, 0.0]),
+            ],
+        }
+
+    catalog["parts"].extend([
+        beam_part("beam_short", "Short beam", 0.20),
+        beam_part("beam_long", "Long beam", 0.40),
+        plate_part("plate_small", "Small plate", 0.20, 0.20),
+        plate_part("plate_large", "Large plate", 0.40, 0.30),
+        bracket_part("bracket_small", "Small bracket", 0.08),
+        bracket_part("bracket_large", "Large bracket", 0.12),
+        axle_part("axle_short", "Short axle", 0.015, 0.12, "axle"),
+        axle_part("axle_long", "Long axle", 0.015, 0.24, "axle"),
+        axle_part("spacer_short", "Short spacer", 0.02, 0.03, "spacer"),
+        axle_part("spacer_long", "Long spacer", 0.03, 0.05, "spacer"),
+    ])
+
+    fixed_joints = {"wheel_caster", "motor_hub", "lidar", "camera", "gripper"}
+    for part in catalog["parts"]:
+        if part["id"] in fixed_joints:
+            part["joint"] = "fixed"
+        for frame in part.get("mounts", []):
+            frame.setdefault("axis", [0.0, 0.0, 1.0])
+            if frame.get("role") in ("wheel", "hub"):
+                frame["axis"] = [0.0, 0.0, 1.0]
 
     with open(os.path.join(PARTS, "catalog.json"), "w", encoding="utf-8") as f:
         json.dump(catalog, f, indent=2)

@@ -12,6 +12,7 @@ namespace robosim {
 struct MountFrame {
     std::string id;
     double x = 0, y = 0, z = 0;
+    double axisX = 0, axisY = 0, axisZ = 1;
     std::string role;
 };
 

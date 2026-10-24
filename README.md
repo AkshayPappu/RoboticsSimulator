@@ -71,6 +71,20 @@ RoboticsSimulator.exe --headless --robot robots/differential_drive.json --steps 
 
 Tests: `build\tests\test_robot.exe` (after `cmake --build build --target test_robot`).
 
+## Assembly graph (schema v1)
+
+New robots are a list of bodies, joints, and motors. The builder does not treat a part as a wheel, an arm, or a chassis. Those words are only labels in the part catalog. A catalog row is a mesh or a primitive, a collision shape, a mass, and mount frames. Snapping a part onto a mount creates a body and a joint. The mount supplies the default anchor and axis. The Assemble tab can change the joint to fixed, revolute, prismatic, or spherical, and can attach a motor.
+
+Units are meters, kilograms, seconds, and radians. Y is up, +X is forward, and +Z is right. A body pose is in its parent's frame. A body with no parent is in the world frame. Joint anchor and axis are in body A's local frame. A motor replaces the lock joint on that pair. Fixed and spherical joints do not take a motor. Cylinder and capsule axes are local Y. Capsule inertia is the solid capsule formula (a cylinder plus two hemispheres).
+
+Files without `schema_version` still load through the older chassis, wheel, and link path. `robots/differential_drive.json` is unchanged. Example graphs:
+
+- `robots/generic_four_wheel.json`
+- `robots/generic_two_link_arm.json`
+- `robots/generic_three_body.json`
+
+Optional `drive: "left"` or `"right"` on a motor lets WASD spin those motors. Joint angle limits are not enforced. Mesh collision is the primitive named on the body, not a convex hull of the mesh. The window drives one active assembly. Terrain editing, the programmatic API, and MCP are later phases.
+
 ## Layout
 
 ```

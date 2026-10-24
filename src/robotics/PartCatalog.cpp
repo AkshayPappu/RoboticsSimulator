@@ -103,6 +103,11 @@ bool PartCatalog::Load(const std::string& path) {
                     frame.y = m["pos"][1].get<double>();
                     frame.z = m["pos"][2].get<double>();
                 }
+                if (m.contains("axis") && m["axis"].is_array() && m["axis"].size() >= 3) {
+                    frame.axisX = m["axis"][0].get<double>();
+                    frame.axisY = m["axis"][1].get<double>();
+                    frame.axisZ = m["axis"][2].get<double>();
+                }
                 part.mounts.push_back(frame);
             }
         }

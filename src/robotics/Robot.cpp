@@ -6,13 +6,17 @@
 #include "robotics/Motor.h"
 #include "robotics/Sensor.h"
 #include "robotics/PartCatalog.h"
+#include "robotics/AssemblyBuilder.h"
 
+#include <chrono/physics/ChBody.h>
 #include <chrono/physics/ChLinkBase.h>
 #include <chrono/assets/ChVisualShapeBox.h>
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include <cmath>
 #include <iostream>
+#include <unordered_set>
+#include <vector>
 
 using json = nlohmann::json;
 
@@ -247,6 +251,12 @@ void Robot::AttachLinks(PhysicsWorld& world) {
 }
 
 void Robot::Build(PhysicsWorld& world, const RobotConfig& config) {
+    m_fromGraph = false;
+    m_graph = {};
+    m_buildErrors.clear();
+    m_bodiesById.clear();
+    m_motorsById.clear();
+    m_driveGroups.clear();
     m_config = DefaultTwoWheelConfig(config);
     m_wheels.clear();
     m_casters.clear();
@@ -318,6 +328,65 @@ void Robot::Build(PhysicsWorld& world, const RobotConfig& config) {
               << " links=" << m_links.size() << std::endl;
 }
 
+bool Robot::BuildFromGraph(PhysicsWorld& world, const AssemblyGraph& graph, const std::string& previewBodyId) {
+    m_buildErrors.clear();
+    m_wheels.clear();
+    m_casters.clear();
+    m_links.clear();
+    m_joints.clear();
+    m_motors.clear();
+    m_sensors.clear();
+    m_bodiesById.clear();
+    m_motorsById.clear();
+    m_driveGroups.clear();
+    m_chassis.reset();
+
+    AssemblyIssue issue;
+    BuiltAssembly built;
+    if (!BuildAssembly(world, graph, built, issue, previewBodyId)) {
+        m_buildErrors = issue.errors;
+        for (const auto& error : issue.errors) {
+            std::cerr << "[Robot] " << error << std::endl;
+        }
+        m_fromGraph = false;
+        return false;
+    }
+
+    m_fromGraph = true;
+    m_graph = graph;
+    m_config.name = graph.name;
+    m_bodiesById = built.bodies;
+    m_chassis = built.root;
+    m_joints = built.joints;
+    m_motors = built.motors;
+    m_driveGroups = built.driveGroups;
+    for (size_t i = 0; i < built.motors.size() && i < built.motorIds.size(); ++i) {
+        m_motorsById[built.motorIds[i]] = built.motors[i];
+    }
+    if (m_chassis) {
+        double x, y, z;
+        m_chassis->GetPosition(x, y, z);
+        m_config.spawnX = x;
+        m_config.spawnY = y;
+        m_config.spawnZ = z;
+    }
+    AddDefaultSensors();
+    return true;
+}
+
+std::shared_ptr<RigidBody> Robot::FindBody(const std::string& id) const {
+    auto it = m_bodiesById.find(id);
+    if (it == m_bodiesById.end()) return nullptr;
+    return it->second;
+}
+
+bool Robot::SetMotorTarget(const std::string& id, double value) {
+    auto it = m_motorsById.find(id);
+    if (it == m_motorsById.end() || !it->second) return false;
+    it->second->SetTarget(value);
+    return true;
+}
+
 void Robot::BuildFromJson(PhysicsWorld& world, const std::string& jsonPath) {
     std::ifstream file(jsonPath);
     if (!file.is_open()) {
@@ -332,6 +401,24 @@ void Robot::BuildFromJson(PhysicsWorld& world, const std::string& jsonPath) {
     } catch (const json::exception& e) {
         std::cerr << "[Robot] JSON parse error: " << e.what() << std::endl;
         Build(world);
+        return;
+    }
+
+    if (j.is_object() && j.contains("schema_version")) {
+        const int version = j.value("schema_version", 0);
+        if (version != 1) {
+            m_buildErrors = {"unsupported schema_version"};
+            std::cerr << "[Robot] unsupported schema_version " << version << std::endl;
+            return;
+        }
+        AssemblyIssue issue;
+        AssemblyGraph graph = AssemblyGraph::FromJson(j, issue);
+        if (!issue.errors.empty()) {
+            m_buildErrors = issue.errors;
+            for (const auto& error : issue.errors) std::cerr << "[Robot] " << error << std::endl;
+            return;
+        }
+        BuildFromGraph(world, graph);
         return;
     }
 
@@ -467,6 +554,7 @@ void Robot::BuildFromJson(PhysicsWorld& world, const std::string& jsonPath) {
 }
 
 nlohmann::json Robot::ToJson() const {
+    if (m_fromGraph) return m_graph.ToJson();
     json j;
     j["name"] = m_config.name;
     j["chassis"] = {
@@ -556,6 +644,17 @@ void Robot::UpdateSensors(PhysicsWorld& world) {
 }
 
 void Robot::SetWheelSpeeds(double left, double right) {
+    bool tagged = false;
+    for (int group : m_driveGroups) {
+        if (group != 0) tagged = true;
+    }
+    if (tagged) {
+        for (size_t i = 0; i < m_motors.size() && i < m_driveGroups.size(); ++i) {
+            if (m_driveGroups[i] == 1) m_motors[i]->SetTargetSpeed(left);
+            else if (m_driveGroups[i] == 2) m_motors[i]->SetTargetSpeed(right);
+        }
+        return;
+    }
     if (m_motors.size() >= 2) {
         m_motors[0]->SetTargetSpeed(left);
         m_motors[1]->SetTargetSpeed(right);
@@ -616,6 +715,22 @@ bool Robot::IsFlipped() const {
     return upY < 0.0;
 }
 
+std::vector<std::shared_ptr<chrono::ChBody>> Robot::GetChBodies() const {
+    std::vector<std::shared_ptr<chrono::ChBody>> out;
+    std::unordered_set<const chrono::ChBody*> seen;
+    auto add = [&](const std::shared_ptr<RigidBody>& body) {
+        if (!body || !body->GetChBody()) return;
+        if (!seen.insert(body->GetChBody().get()).second) return;
+        out.push_back(body->GetChBody());
+    };
+    add(m_chassis);
+    for (const auto& wheel : m_wheels) add(wheel);
+    for (const auto& caster : m_casters) add(caster);
+    for (const auto& link : m_links) add(link);
+    for (const auto& entry : m_bodiesById) add(entry.second);
+    return out;
+}
+
 void Robot::RemoveFromWorld(PhysicsWorld& world) {
     for (auto& motor : m_motors) {
         if (motor && motor->GetChLink()) {
@@ -628,13 +743,19 @@ void Robot::RemoveFromWorld(PhysicsWorld& world) {
         }
     }
 
-    auto removeBody = [&](std::shared_ptr<RigidBody> body) {
-        if (body) world.RemoveBody(body);
-    };
-    removeBody(m_chassis);
-    for (auto& w : m_wheels) removeBody(w);
-    for (auto& c : m_casters) removeBody(c);
-    for (auto& l : m_links) removeBody(l);
+    std::vector<std::shared_ptr<RigidBody>> bodies;
+    if (m_chassis) bodies.push_back(m_chassis);
+    for (auto& wheel : m_wheels) if (wheel) bodies.push_back(wheel);
+    for (auto& caster : m_casters) if (caster) bodies.push_back(caster);
+    for (auto& link : m_links) if (link) bodies.push_back(link);
+    for (auto& entry : m_bodiesById) if (entry.second) bodies.push_back(entry.second);
+
+    std::unordered_set<const RigidBody*> seen;
+    for (auto& body : bodies) {
+        if (!body || !seen.insert(body.get()).second) continue;
+        world.RemoveBody(body);
+    }
+    world.ClearContacts();
 
     m_chassis.reset();
     m_wheels.clear();
@@ -643,6 +764,10 @@ void Robot::RemoveFromWorld(PhysicsWorld& world) {
     m_joints.clear();
     m_motors.clear();
     m_sensors.clear();
+    m_bodiesById.clear();
+    m_motorsById.clear();
+    m_driveGroups.clear();
+    m_fromGraph = false;
 }
 
 void Robot::Reset(double x, double y, double z) {

@@ -1,0 +1,7 @@
+newmtl metal
+Kd 0.550 0.570 0.600
+Ka 0.15 0.15 0.15
+Ks 0.25 0.25 0.25
+Ns 40
+map_Kd ../textures/aluminum.png
+

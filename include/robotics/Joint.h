@@ -11,7 +11,8 @@ class PhysicsWorld;
 enum class JointType {
     Revolute,
     Prismatic,
-    Fixed
+    Fixed,
+    Spherical
 };
 
 class Joint {
@@ -38,6 +39,13 @@ public:
         PhysicsWorld& world,
         std::shared_ptr<chrono::ChBody> bodyA,
         std::shared_ptr<chrono::ChBody> bodyB
+    );
+
+    static std::shared_ptr<Joint> CreateSpherical(
+        PhysicsWorld& world,
+        std::shared_ptr<chrono::ChBody> bodyA,
+        std::shared_ptr<chrono::ChBody> bodyB,
+        const chrono::ChVector3d& anchor
     );
 
     JointType GetType() const { return m_type; }

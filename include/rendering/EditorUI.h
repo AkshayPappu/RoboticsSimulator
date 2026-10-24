@@ -1,5 +1,6 @@
 #pragma once
 
+#include "robotics/AssemblyGraph.h"
 #include "robotics/PartCatalog.h"
 
 #include <memory>
@@ -55,6 +56,7 @@ public:
 
     void Initialize(Simulation& sim);
     void Render();
+    void ApplyPendingAssembly();
     void Shutdown();
 
     EditorState& GetState() { return m_state; }
@@ -76,6 +78,10 @@ private:
     void RenderSimulationControls();
     void RenderHelpOverlay();
     void SpawnRobotPreset(const char* fileName);
+    void LoadRobotFromPath(const std::string& path);
+    void ApplyDriveMode();
+    void SetSimulationPlaying(bool playing);
+    void ResetRobot();
 
     Simulation* m_sim = nullptr;
     EditorState m_state;
@@ -92,7 +98,7 @@ private:
 
     // File dialog state
     char m_scenePathBuf[256] = {};
-    char m_robotPathBuf[256] = {};
+    char m_robotPathBuf[256] = "robots/assembled.json";
 
     // New object parameters
     float m_newObjSize[3] = {1.0f, 1.0f, 1.0f};
@@ -100,24 +106,42 @@ private:
     float m_newObjMass = 1.0f;
     int m_newObjType = 0;  // 0=box, 1=sphere, 2=cylinder
 
-    int m_presetIndex = 0;
     int m_controllerIndex = 0;
     char m_saveRobotPathBuf[256] = "robots/custom_robot.json";
 
     std::vector<std::shared_ptr<RigidBody>> m_undoDeleted;
 
-    std::vector<AssemblyItem> m_assembly;
+    AssemblyGraph m_graph;
     std::string m_selectedPartId;
     std::string m_selectedInstanceId;
+    std::string m_poseEditId;
     int m_pendingClickX = -1;
     int m_pendingClickY = -1;
+    bool m_mouseLeftDown = false;
     int m_instanceSerial = 1;
+    int m_jointTypeIndex = 1;
+    int m_selectedShape = -1;
+    bool m_attachMotor = true;
+    bool m_showCollisionPreview = false;
+    bool m_assemblyDirty = false;
+    float m_poseEdit[3] = {0, 0, 0};
+    float m_eulerEdit[3] = {0, 0, 0};
+    float m_axisEdit[3] = {0, 0, 1};
 
     void RenderAssemblerPanel();
     void RebuildFromAssembly();
     void SnapSelectedPart(const std::string& parentId, const std::string& mountId);
+    void AddPrimitiveBody(AssemblyShape shape,
+                          const std::string& parentId = {},
+                          const std::string& mountId = {});
+    void EraseBodyTree(const std::string& id);
+    void DeleteBodyTree(const std::string& id);
+    void DuplicateSelectedBody();
+    void LoadGraphFile(const std::string& path);
     bool TryPickMount(int mx, int my);
     void HandleAssemblerMouse(int x, int y, bool leftDown, bool rightDown, float wheel);
+    AssemblyJointType SelectedJointType() const;
+    void RememberPoseEditor();
 };
 
 }  // namespace robosim

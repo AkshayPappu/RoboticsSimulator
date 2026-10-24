@@ -88,6 +88,23 @@ std::shared_ptr<Joint> Joint::CreateFixed(
     return joint;
 }
 
+std::shared_ptr<Joint> Joint::CreateSpherical(
+    PhysicsWorld& world,
+    std::shared_ptr<chrono::ChBody> bodyA,
+    std::shared_ptr<chrono::ChBody> bodyB,
+    const chrono::ChVector3d& anchor)
+{
+    auto joint = std::shared_ptr<Joint>(new Joint());
+    joint->m_type = JointType::Spherical;
+
+    auto link = chrono_types::make_shared<chrono::ChLinkLockSpherical>();
+    link->Initialize(bodyA, bodyB, chrono::ChFrame<>(anchor, chrono::QUNIT));
+
+    joint->m_link = link;
+    world.AddLink(link);
+    return joint;
+}
+
 void Joint::SetLimits(double lower, double upper) {
     // Joint limits can be set through ChLinkLimit on specific DOFs
     // In Chrono 10, access is via the link's limit members

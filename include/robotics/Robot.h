@@ -1,11 +1,17 @@
 #pragma once
 
 #include "physics/Assets.h"
+#include "robotics/AssemblyGraph.h"
 
 #include <memory>
+#include <unordered_map>
 #include <vector>
 #include <string>
 #include <nlohmann/json.hpp>
+
+namespace chrono {
+class ChBody;
+}
 
 namespace robosim {
 
@@ -109,7 +115,13 @@ public:
 
     void Build(PhysicsWorld& world, const RobotConfig& config = {});
     void BuildFromJson(PhysicsWorld& world, const std::string& jsonPath);
+    bool BuildFromGraph(PhysicsWorld& world, const AssemblyGraph& graph, const std::string& previewBodyId = {});
     nlohmann::json ToJson() const;
+
+    const AssemblyGraph* GetAssembly() const { return m_fromGraph ? &m_graph : nullptr; }
+    const std::vector<std::string>& GetBuildErrors() const { return m_buildErrors; }
+    std::shared_ptr<RigidBody> FindBody(const std::string& id) const;
+    bool SetMotorTarget(const std::string& id, double value);
 
     void SetWheelSpeeds(double left, double right);
     void SetLeftWheelSpeed(double speed);
@@ -137,12 +149,19 @@ public:
 
     void Reset(double x, double y, double z);
     void RemoveFromWorld(PhysicsWorld& world);
+    std::vector<std::shared_ptr<chrono::ChBody>> GetChBodies() const;
 
 private:
     void AttachWheelsAndCasters(PhysicsWorld& world);
     void AttachLinks(PhysicsWorld& world);
 
     RobotConfig m_config;
+    bool m_fromGraph = false;
+    AssemblyGraph m_graph;
+    std::vector<std::string> m_buildErrors;
+    std::unordered_map<std::string, std::shared_ptr<RigidBody>> m_bodiesById;
+    std::unordered_map<std::string, std::shared_ptr<Motor>> m_motorsById;
+    std::vector<int> m_driveGroups;
     std::shared_ptr<RigidBody> m_chassis;
     std::vector<std::shared_ptr<RigidBody>> m_wheels;
     std::vector<std::shared_ptr<RigidBody>> m_casters;

@@ -7,6 +7,7 @@
 
 namespace chrono {
 class ChSystem;
+class ChBody;
 namespace irrlicht {
 class ChVisualSystemIrrlicht;
 }
@@ -49,6 +50,7 @@ public:
 
     void SetWindowTitle(const std::string& title);
     void BindAll();
+    void UnbindItem(const std::shared_ptr<chrono::ChBody>& body);
     void ShutdownImGui();
     void SetShowGrid(bool show);
     bool GetShowGrid() const { return m_showGrid; }

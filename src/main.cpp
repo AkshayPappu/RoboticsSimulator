@@ -190,9 +190,7 @@ int main(int argc, char* argv[]) {
     } else {
         RunRobotDemo(sim);
         if (!appConfig.robotPath.empty()) {
-            if (sim.GetRobot()) {
-                sim.GetRobot()->RemoveFromWorld(sim.GetWorld());
-            }
+            sim.ReleaseRobot();
             auto robot = std::make_shared<Robot>();
             robot->BuildFromJson(sim.GetWorld(), appConfig.robotPath);
             sim.SetRobot(robot);

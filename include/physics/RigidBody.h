@@ -25,6 +25,7 @@ enum class BodyShape {
     Box,
     Sphere,
     Cylinder,
+    Capsule,
     Custom
 };
 
@@ -53,6 +54,16 @@ public:
     );
 
     static std::shared_ptr<RigidBody> CreateCylinder(
+        double radius,
+        double height,
+        double mass,
+        const BodyTransform& transform = {},
+        const Material& material = {}
+    );
+
+    // Capsule axis is local Y. height is the cylindrical section.
+    // Inertia is the solid-capsule formula: cylinder plus two hemispheres.
+    static std::shared_ptr<RigidBody> CreateCapsule(
         double radius,
         double height,
         double mass,
@@ -94,6 +105,7 @@ public:
 
     void SetColor(float r, float g, float b);
     void SetCollisionFamily(int family, bool collideWithSameFamily = false);
+    void SetCollisionEnabled(bool enabled);
 
     void AddVisualMesh(const std::string& path, double scale = 1.0,
                        double ox = 0.0, double oy = 0.0, double oz = 0.0);

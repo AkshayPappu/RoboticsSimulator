@@ -117,6 +117,8 @@ set(SIMULATOR_SOURCES
     src/physics/RigidBody.cpp
     src/physics/Assets.cpp
     src/robotics/Robot.cpp
+    src/robotics/AssemblyGraph.cpp
+    src/robotics/AssemblyBuilder.cpp
     src/robotics/Joint.cpp
     src/robotics/Motor.cpp
     src/robotics/Controller.cpp
@@ -137,6 +139,8 @@ set(SIMULATOR_HEADERS
     include/physics/RigidBody.h
     include/physics/Assets.h
     include/robotics/Robot.h
+    include/robotics/AssemblyGraph.h
+    include/robotics/AssemblyBuilder.h
     include/robotics/Joint.h
     include/robotics/Motor.h
     include/robotics/Controller.h
@@ -211,6 +215,8 @@ if(BUILD_PYTHON_BINDINGS)
         src/physics/RigidBody.cpp
         src/physics/Assets.cpp
         src/robotics/Robot.cpp
+        src/robotics/AssemblyGraph.cpp
+        src/robotics/AssemblyBuilder.cpp
         src/robotics/Joint.cpp
         src/robotics/Motor.cpp
         src/robotics/Controller.cpp

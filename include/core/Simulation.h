@@ -65,7 +65,10 @@ public:
     Telemetry* GetTelemetry() { return m_telemetry.get(); }
 
     void SetRobot(std::shared_ptr<Robot> robot);
+    void ReleaseRobot();
+    void AddRobot(std::shared_ptr<Robot> robot);
     Robot* GetRobot() { return m_robot.get(); }
+    const std::vector<std::shared_ptr<Robot>>& GetRobots() const { return m_robots; }
 
     void SetController(std::shared_ptr<Controller> controller);
     Controller* GetController() { return m_controller.get(); }
@@ -85,6 +88,7 @@ private:
     std::unique_ptr<Telemetry> m_telemetry;
 
     std::shared_ptr<Robot> m_robot;
+    std::vector<std::shared_ptr<Robot>> m_robots;
     std::shared_ptr<Controller> m_controller;
 
     SimulationState m_state = SimulationState::Stopped;

@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <chrono/physics/ChBody.h>
+#include <chrono/physics/ChLinkMotor.h>
 #include <chrono/physics/ChLinkMotorRotationSpeed.h>
 #include <chrono/physics/ChLinkMotorRotationTorque.h>
 
@@ -11,7 +12,11 @@ class PhysicsWorld;
 
 enum class MotorMode {
     Speed,
-    Torque
+    Torque,
+    Position,
+    LinearSpeed,
+    LinearPosition,
+    LinearForce
 };
 
 class Motor {
@@ -34,6 +39,39 @@ public:
         const chrono::ChVector3d& axis
     );
 
+    static std::shared_ptr<Motor> CreatePositionMotor(
+        PhysicsWorld& world,
+        std::shared_ptr<chrono::ChBody> bodyA,
+        std::shared_ptr<chrono::ChBody> bodyB,
+        const chrono::ChVector3d& anchor,
+        const chrono::ChVector3d& axis
+    );
+
+    static std::shared_ptr<Motor> CreateLinearSpeedMotor(
+        PhysicsWorld& world,
+        std::shared_ptr<chrono::ChBody> bodyA,
+        std::shared_ptr<chrono::ChBody> bodyB,
+        const chrono::ChVector3d& anchor,
+        const chrono::ChVector3d& axis
+    );
+
+    static std::shared_ptr<Motor> CreateLinearPositionMotor(
+        PhysicsWorld& world,
+        std::shared_ptr<chrono::ChBody> bodyA,
+        std::shared_ptr<chrono::ChBody> bodyB,
+        const chrono::ChVector3d& anchor,
+        const chrono::ChVector3d& axis
+    );
+
+    static std::shared_ptr<Motor> CreateLinearForceMotor(
+        PhysicsWorld& world,
+        std::shared_ptr<chrono::ChBody> bodyA,
+        std::shared_ptr<chrono::ChBody> bodyB,
+        const chrono::ChVector3d& anchor,
+        const chrono::ChVector3d& axis
+    );
+
+    void SetTarget(double value);
     void SetTargetSpeed(double speed);
     void SetTorque(double torque);
 
@@ -42,7 +80,7 @@ public:
     double GetAppliedTorque() const;
 
     MotorMode GetMode() const { return m_mode; }
-    std::shared_ptr<chrono::ChLinkMotorRotation> GetChLink() const { return m_motor; }
+    std::shared_ptr<chrono::ChLinkMotor> GetChLink() const { return m_motor; }
 
     double GetMaxSpeed() const { return m_maxSpeed; }
     void SetMaxSpeed(double maxSpeed) { m_maxSpeed = maxSpeed; }
@@ -58,7 +96,7 @@ private:
         const chrono::ChVector3d& axis
     );
 
-    std::shared_ptr<chrono::ChLinkMotorRotation> m_motor;
+    std::shared_ptr<chrono::ChLinkMotor> m_motor;
     MotorMode m_mode;
     double m_maxSpeed = 10.0;
     double m_maxTorque = 50.0;

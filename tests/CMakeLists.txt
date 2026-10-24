@@ -19,6 +19,8 @@ set(SIM_LIB_SOURCES
     ${CMAKE_SOURCE_DIR}/src/physics/RigidBody.cpp
     ${CMAKE_SOURCE_DIR}/src/physics/Assets.cpp
     ${CMAKE_SOURCE_DIR}/src/robotics/Robot.cpp
+    ${CMAKE_SOURCE_DIR}/src/robotics/AssemblyGraph.cpp
+    ${CMAKE_SOURCE_DIR}/src/robotics/AssemblyBuilder.cpp
     ${CMAKE_SOURCE_DIR}/src/robotics/Joint.cpp
     ${CMAKE_SOURCE_DIR}/src/robotics/Motor.cpp
     ${CMAKE_SOURCE_DIR}/src/robotics/Controller.cpp
@@ -52,4 +54,5 @@ endfunction()
 
 add_sim_test(test_physics test_physics.cpp)
 add_sim_test(test_robot test_robot.cpp)
+add_sim_test(test_assembly test_assembly.cpp)
 add_sim_test(test_scene_loader test_scene_loader.cpp)

@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "name": "generic_two_link_arm",
+  "root": "base",
+  "bodies": [
+    {
+      "id": "base",
+      "part_id": "chassis_arm",
+      "shape": "box",
+      "dimensions": [0.4, 0.12, 0.4],
+      "mass": 12.0,
+      "fixed": true,
+      "friction": 0.6,
+      "pose": { "position": [0.0, 0.06, 0.0], "rotation": [1, 0, 0, 0] }
+    },
+    {
+      "id": "shoulder",
+      "part_id": "arm_link_a",
+      "shape": "box",
+      "dimensions": [0.08, 0.35, 0.08],
+      "mass": 1.2,
+      "friction": 0.4,
+      "parent": "base",
+      "pose": { "position": [0.0, 0.25, 0.0], "rotation": [1, 0, 0, 0] }
+    },
+    {
+      "id": "elbow",
+      "part_id": "arm_link_b",
+      "shape": "box",
+      "dimensions": [0.07, 0.3, 0.07],
+      "mass": 0.8,
+      "friction": 0.4,
+      "parent": "shoulder",
+      "pose": { "position": [0.0, 0.32, 0.0], "rotation": [1, 0, 0, 0] }
+    }
+  ],
+  "joints": [
+    {
+      "id": "shoulder_joint",
+      "type": "revolute",
+      "body_a": "base",
+      "body_b": "shoulder",
+      "anchor": [0.0, 0.06, 0.0],
+      "axis": [0, 0, 1]
+    },
+    {
+      "id": "elbow_joint",
+      "type": "revolute",
+      "body_a": "shoulder",
+      "body_b": "elbow",
+      "anchor": [0.0, 0.17, 0.0],
+      "axis": [0, 0, 1]
+    }
+  ],
+  "motors": [
+    { "id": "shoulder_motor", "joint": "shoulder_joint", "mode": "position", "max_speed": 4.0, "max_torque": 8.0 },
+    { "id": "elbow_motor", "joint": "elbow_joint", "mode": "velocity", "max_speed": 4.0, "max_torque": 8.0 }
+  ]
+}

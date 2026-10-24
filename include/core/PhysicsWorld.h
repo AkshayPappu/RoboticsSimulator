@@ -36,6 +36,7 @@ public:
     void RemoveBody(std::shared_ptr<RigidBody> body);
     void AddLink(std::shared_ptr<chrono::ChLinkBase> link);
     void RemoveLink(std::shared_ptr<chrono::ChLinkBase> link);
+    void ClearContacts();
 
     const std::vector<std::shared_ptr<RigidBody>>& GetBodies() const { return m_bodies; }
 

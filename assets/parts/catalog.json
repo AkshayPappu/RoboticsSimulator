@@ -23,7 +23,12 @@
             -0.02,
             -0.12
           ],
-          "role": "wheel"
+          "role": "wheel",
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
         },
         {
           "id": "wheel_right",
@@ -32,7 +37,12 @@
             -0.02,
             0.12
           ],
-          "role": "wheel"
+          "role": "wheel",
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
         },
         {
           "id": "caster_rear",
@@ -41,7 +51,12 @@
             -0.02,
             0.0
           ],
-          "role": "caster"
+          "role": "caster",
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
         },
         {
           "id": "deck_front",
@@ -50,7 +65,12 @@
             0.05,
             0.0
           ],
-          "role": "sensor"
+          "role": "sensor",
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
         },
         {
           "id": "deck_center",
@@ -59,7 +79,12 @@
             0.05,
             0.0
           ],
-          "role": "arm"
+          "role": "arm",
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
         }
       ]
     },
@@ -71,7 +96,11 @@
       "visual": {
         "mesh": "parts/turtlebot3/burger_base.obj",
         "scale": 1.0,
-        "color": [0.30, 0.31, 0.34],
+        "color": [
+          0.3,
+          0.31,
+          0.34
+        ],
         "metallic": 0.05,
         "roughness": 0.72
       },
@@ -92,7 +121,12 @@
             0.0,
             -0.16
           ],
-          "role": "wheel"
+          "role": "wheel",
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
         },
         {
           "id": "wheel_right",
@@ -101,7 +135,12 @@
             0.0,
             0.16
           ],
-          "role": "wheel"
+          "role": "wheel",
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
         },
         {
           "id": "caster_rear",
@@ -110,7 +149,12 @@
             0.0,
             0.0
           ],
-          "role": "caster"
+          "role": "caster",
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
         },
         {
           "id": "deck_front",
@@ -119,7 +163,12 @@
             0.09,
             0.0
           ],
-          "role": "sensor"
+          "role": "sensor",
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
         },
         {
           "id": "deck_center",
@@ -128,7 +177,12 @@
             0.09,
             0.0
           ],
-          "role": "arm"
+          "role": "arm",
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
         },
         {
           "id": "hub_left",
@@ -137,7 +191,12 @@
             0.0,
             -0.12
           ],
-          "role": "hub"
+          "role": "hub",
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
         },
         {
           "id": "hub_right",
@@ -146,7 +205,12 @@
             0.0,
             0.12
           ],
-          "role": "hub"
+          "role": "hub",
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
         }
       ]
     },
@@ -172,7 +236,12 @@
             0.0,
             -0.22
           ],
-          "role": "wheel"
+          "role": "wheel",
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
         },
         {
           "id": "wheel_fr",
@@ -181,7 +250,12 @@
             0.0,
             0.22
           ],
-          "role": "wheel"
+          "role": "wheel",
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
         },
         {
           "id": "wheel_rl",
@@ -190,7 +264,12 @@
             0.0,
             -0.22
           ],
-          "role": "wheel"
+          "role": "wheel",
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
         },
         {
           "id": "wheel_rr",
@@ -199,7 +278,12 @@
             0.0,
             0.22
           ],
-          "role": "wheel"
+          "role": "wheel",
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
         },
         {
           "id": "deck_front",
@@ -208,7 +292,12 @@
             0.08,
             0.0
           ],
-          "role": "sensor"
+          "role": "sensor",
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
         },
         {
           "id": "deck_center",
@@ -217,7 +306,12 @@
             0.08,
             0.0
           ],
-          "role": "arm"
+          "role": "arm",
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
         }
       ]
     },
@@ -229,7 +323,11 @@
       "visual": {
         "mesh": "parts/turtlebot3/left_tire.obj",
         "scale": 1.0,
-        "color": [0.07, 0.07, 0.08],
+        "color": [
+          0.07,
+          0.07,
+          0.08
+        ],
         "metallic": 0.0,
         "roughness": 0.92
       },
@@ -251,7 +349,8 @@
         "radius": 0.05
       },
       "mass": 0.15,
-      "mounts": []
+      "mounts": [],
+      "joint": "fixed"
     },
     {
       "id": "motor_hub",
@@ -265,7 +364,8 @@
       },
       "mass": 0.12,
       "visual_only": true,
-      "mounts": []
+      "mounts": [],
+      "joint": "fixed"
     },
     {
       "id": "lidar",
@@ -275,7 +375,11 @@
       "visual": {
         "mesh": "parts/turtlebot3/lds.obj",
         "scale": 1.0,
-        "color": [0.14, 0.15, 0.17],
+        "color": [
+          0.14,
+          0.15,
+          0.17
+        ],
         "metallic": 0.15,
         "roughness": 0.55
       },
@@ -286,7 +390,8 @@
       },
       "mass": 0.08,
       "visual_only": true,
-      "mounts": []
+      "mounts": [],
+      "joint": "fixed"
     },
     {
       "id": "camera",
@@ -303,7 +408,8 @@
       },
       "mass": 0.05,
       "visual_only": true,
-      "mounts": []
+      "mounts": [],
+      "joint": "fixed"
     },
     {
       "id": "arm_link_a",
@@ -327,7 +433,12 @@
             0.32,
             0.0
           ],
-          "role": "arm"
+          "role": "arm",
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
         }
       ]
     },
@@ -353,7 +464,12 @@
             0.2,
             0.0
           ],
-          "role": "arm"
+          "role": "arm",
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
         }
       ]
     },
@@ -415,6 +531,510 @@
       },
       "mass": 0.0,
       "mounts": []
+    },
+    {
+      "id": "beam_short",
+      "name": "Short beam",
+      "category": "beam",
+      "mesh": "parts/beam_short.obj",
+      "collision": {
+        "shape": "box",
+        "size": [
+          0.2,
+          0.04,
+          0.04
+        ]
+      },
+      "mass": 0.35,
+      "joint": "fixed",
+      "mounts": [
+        {
+          "id": "end_a",
+          "pos": [
+            -0.1,
+            0.0,
+            0.0
+          ],
+          "role": "structure",
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "id": "end_b",
+          "pos": [
+            0.1,
+            0.0,
+            0.0
+          ],
+          "role": "structure",
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "id": "face",
+          "pos": [
+            0.0,
+            0.02,
+            0.0
+          ],
+          "role": "structure",
+          "axis": [
+            0.0,
+            1.0,
+            0.0
+          ]
+        }
+      ]
+    },
+    {
+      "id": "beam_long",
+      "name": "Long beam",
+      "category": "beam",
+      "mesh": "parts/beam_long.obj",
+      "collision": {
+        "shape": "box",
+        "size": [
+          0.4,
+          0.04,
+          0.04
+        ]
+      },
+      "mass": 0.7,
+      "joint": "fixed",
+      "mounts": [
+        {
+          "id": "end_a",
+          "pos": [
+            -0.2,
+            0.0,
+            0.0
+          ],
+          "role": "structure",
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "id": "end_b",
+          "pos": [
+            0.2,
+            0.0,
+            0.0
+          ],
+          "role": "structure",
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "id": "face",
+          "pos": [
+            0.0,
+            0.02,
+            0.0
+          ],
+          "role": "structure",
+          "axis": [
+            0.0,
+            1.0,
+            0.0
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plate_small",
+      "name": "Small plate",
+      "category": "plate",
+      "mesh": "parts/plate_small.obj",
+      "collision": {
+        "shape": "box",
+        "size": [
+          0.2,
+          0.02,
+          0.2
+        ]
+      },
+      "mass": 0.5,
+      "joint": "fixed",
+      "mounts": [
+        {
+          "id": "edge_a",
+          "pos": [
+            -0.1,
+            0.0,
+            0.0
+          ],
+          "role": "structure",
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "id": "edge_b",
+          "pos": [
+            0.1,
+            0.0,
+            0.0
+          ],
+          "role": "structure",
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "id": "face",
+          "pos": [
+            0.0,
+            0.01,
+            0.0
+          ],
+          "role": "structure",
+          "axis": [
+            0.0,
+            1.0,
+            0.0
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plate_large",
+      "name": "Large plate",
+      "category": "plate",
+      "mesh": "parts/plate_large.obj",
+      "collision": {
+        "shape": "box",
+        "size": [
+          0.4,
+          0.02,
+          0.3
+        ]
+      },
+      "mass": 1.5,
+      "joint": "fixed",
+      "mounts": [
+        {
+          "id": "edge_a",
+          "pos": [
+            -0.2,
+            0.0,
+            0.0
+          ],
+          "role": "structure",
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "id": "edge_b",
+          "pos": [
+            0.2,
+            0.0,
+            0.0
+          ],
+          "role": "structure",
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "id": "face",
+          "pos": [
+            0.0,
+            0.01,
+            0.0
+          ],
+          "role": "structure",
+          "axis": [
+            0.0,
+            1.0,
+            0.0
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bracket_small",
+      "name": "Small bracket",
+      "category": "bracket",
+      "mesh": "parts/bracket_small.obj",
+      "collision": {
+        "shape": "box",
+        "size": [
+          0.08,
+          0.08,
+          0.04
+        ]
+      },
+      "mass": 0.15,
+      "joint": "fixed",
+      "mounts": [
+        {
+          "id": "foot",
+          "pos": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "role": "structure",
+          "axis": [
+            0.0,
+            1.0,
+            0.0
+          ]
+        },
+        {
+          "id": "upright",
+          "pos": [
+            -0.02,
+            0.06,
+            0.0
+          ],
+          "role": "structure",
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bracket_large",
+      "name": "Large bracket",
+      "category": "bracket",
+      "mesh": "parts/bracket_large.obj",
+      "collision": {
+        "shape": "box",
+        "size": [
+          0.12,
+          0.12,
+          0.06
+        ]
+      },
+      "mass": 0.506,
+      "joint": "fixed",
+      "mounts": [
+        {
+          "id": "foot",
+          "pos": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "role": "structure",
+          "axis": [
+            0.0,
+            1.0,
+            0.0
+          ]
+        },
+        {
+          "id": "upright",
+          "pos": [
+            -0.03,
+            0.09,
+            0.0
+          ],
+          "role": "structure",
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
+        }
+      ]
+    },
+    {
+      "id": "axle_short",
+      "name": "Short axle",
+      "category": "axle",
+      "mesh": "parts/axle_short.obj",
+      "collision": {
+        "shape": "cylinder",
+        "radius": 0.015,
+        "height": 0.12
+      },
+      "mass": 0.001,
+      "joint": "revolute",
+      "mounts": [
+        {
+          "id": "end_a",
+          "pos": [
+            0.0,
+            -0.06,
+            0.0
+          ],
+          "role": "structure",
+          "axis": [
+            0.0,
+            1.0,
+            0.0
+          ]
+        },
+        {
+          "id": "end_b",
+          "pos": [
+            0.0,
+            0.06,
+            0.0
+          ],
+          "role": "structure",
+          "axis": [
+            0.0,
+            1.0,
+            0.0
+          ]
+        }
+      ]
+    },
+    {
+      "id": "axle_long",
+      "name": "Long axle",
+      "category": "axle",
+      "mesh": "parts/axle_long.obj",
+      "collision": {
+        "shape": "cylinder",
+        "radius": 0.015,
+        "height": 0.24
+      },
+      "mass": 0.002,
+      "joint": "revolute",
+      "mounts": [
+        {
+          "id": "end_a",
+          "pos": [
+            0.0,
+            -0.12,
+            0.0
+          ],
+          "role": "structure",
+          "axis": [
+            0.0,
+            1.0,
+            0.0
+          ]
+        },
+        {
+          "id": "end_b",
+          "pos": [
+            0.0,
+            0.12,
+            0.0
+          ],
+          "role": "structure",
+          "axis": [
+            0.0,
+            1.0,
+            0.0
+          ]
+        }
+      ]
+    },
+    {
+      "id": "spacer_short",
+      "name": "Short spacer",
+      "category": "spacer",
+      "mesh": "parts/spacer_short.obj",
+      "collision": {
+        "shape": "cylinder",
+        "radius": 0.02,
+        "height": 0.03
+      },
+      "mass": 0.0,
+      "joint": "fixed",
+      "mounts": [
+        {
+          "id": "end_a",
+          "pos": [
+            0.0,
+            -0.015,
+            0.0
+          ],
+          "role": "structure",
+          "axis": [
+            0.0,
+            1.0,
+            0.0
+          ]
+        },
+        {
+          "id": "end_b",
+          "pos": [
+            0.0,
+            0.015,
+            0.0
+          ],
+          "role": "structure",
+          "axis": [
+            0.0,
+            1.0,
+            0.0
+          ]
+        }
+      ]
+    },
+    {
+      "id": "spacer_long",
+      "name": "Long spacer",
+      "category": "spacer",
+      "mesh": "parts/spacer_long.obj",
+      "collision": {
+        "shape": "cylinder",
+        "radius": 0.03,
+        "height": 0.05
+      },
+      "mass": 0.002,
+      "joint": "fixed",
+      "mounts": [
+        {
+          "id": "end_a",
+          "pos": [
+            0.0,
+            -0.025,
+            0.0
+          ],
+          "role": "structure",
+          "axis": [
+            0.0,
+            1.0,
+            0.0
+          ]
+        },
+        {
+          "id": "end_b",
+          "pos": [
+            0.0,
+            0.025,
+            0.0
+          ],
+          "role": "structure",
+          "axis": [
+            0.0,
+            1.0,
+            0.0
+          ]
+        }
+      ]
     }
   ]
 }

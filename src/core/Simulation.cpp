@@ -14,6 +14,9 @@
 #include <thread>
 #include <cmath>
 #include <algorithm>
+#include <cstring>
+#include <exception>
+#include <new>
 
 namespace robosim {
 
@@ -81,6 +84,10 @@ void Simulation::Run() {
             break;
         }
 
+        const char* phase = "updating the robot";
+        try {
+        if (m_editorUI) m_editorUI->ApplyPendingAssembly();
+
         if (m_state == SimulationState::Running) {
             double dt = m_config.physicsTimestep;
 
@@ -88,9 +95,11 @@ void Simulation::Run() {
                 m_preStepCallback(dt);
             }
 
+            phase = "driving";
             if (m_controller && m_robot) {
                 m_controller->Update(*m_robot, dt);
             }
+            phase = "simulating";
             // Sensors are sampled from the editor/inspector, not every physics tick,
             // so a bad raycast cannot take down the whole sim loop.
 
@@ -120,6 +129,7 @@ void Simulation::Run() {
         }
 
         if (m_renderer) {
+            phase = "drawing";
             m_renderer->BeginFrame();
             m_renderer->Render();
             if (m_editorUI) {
@@ -137,6 +147,30 @@ void Simulation::Run() {
         }
 
         if (m_state == SimulationState::Stepping) {
+            m_state = SimulationState::Paused;
+        }
+        } catch (const std::exception& ex) {
+            std::cerr << "[Editor] Failed while " << phase << ": " << ex.what() << std::endl;
+            std::cerr << "[Editor] The robot was removed so the window can stay open." << std::endl;
+            if (std::strcmp(phase, "drawing") == 0 && m_renderer) {
+                try {
+                    m_renderer->EndFrame();
+                } catch (...) {
+                }
+            }
+            if (m_editorUI) {
+                try {
+                    m_editorUI->Log(std::string("[Editor] Failed while ") + phase +
+                                    ". The robot was removed so the window can stay open.");
+                } catch (...) {
+                }
+            }
+            ReleaseRobot();
+            m_state = SimulationState::Paused;
+        } catch (...) {
+            std::cerr << "[Editor] Failed while " << phase << ". The robot was removed so the window can stay open."
+                      << std::endl;
+            ReleaseRobot();
             m_state = SimulationState::Paused;
         }
     }
@@ -179,7 +213,13 @@ void Simulation::StepOnce() {
         if (m_controller && m_robot) {
             m_controller->Update(*m_robot, dt);
         }
-        m_world->Step();
+        try {
+            m_world->Step();
+        } catch (const std::exception&) {
+            ReleaseRobot();
+            m_state = SimulationState::Paused;
+            return;
+        }
         if (m_robot) m_robot->UpdateSensors(*m_world);
         m_stepCount++;
         m_state = SimulationState::Stepping;
@@ -190,8 +230,36 @@ double Simulation::GetSimTime() const {
     return m_world ? m_world->GetTime() : 0.0;
 }
 
+void Simulation::ReleaseRobot() {
+    if (!m_robot) return;
+    try {
+        if (m_renderer) {
+            for (const auto& body : m_robot->GetChBodies()) {
+                m_renderer->UnbindItem(body);
+            }
+        }
+        m_robot->RemoveFromWorld(*m_world);
+    } catch (const std::exception&) {
+    }
+    SetRobot(nullptr);
+}
+
 void Simulation::SetRobot(std::shared_ptr<Robot> robot) {
+    if (m_robot && m_robot != robot) {
+        m_robots.erase(std::remove(m_robots.begin(), m_robots.end(), m_robot), m_robots.end());
+    }
     m_robot = robot;
+    if (robot && std::find(m_robots.begin(), m_robots.end(), robot) == m_robots.end()) {
+        m_robots.push_back(robot);
+    }
+}
+
+void Simulation::AddRobot(std::shared_ptr<Robot> robot) {
+    if (!robot) return;
+    if (std::find(m_robots.begin(), m_robots.end(), robot) == m_robots.end()) {
+        m_robots.push_back(robot);
+    }
+    if (!m_robot) m_robot = robot;
 }
 
 void Simulation::SetController(std::shared_ptr<Controller> controller) {

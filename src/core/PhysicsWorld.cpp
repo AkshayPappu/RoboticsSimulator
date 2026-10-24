@@ -3,6 +3,8 @@
 #include "physics/RigidBody.h"
 
 #include <chrono/collision/ChCollisionSystem.h>
+#include <chrono/physics/ChContactContainer.h>
+#include <chrono/physics/ChPhysicsItem.h>
 #include <algorithm>
 
 namespace robosim {
@@ -54,11 +56,22 @@ void PhysicsWorld::AddBody(std::shared_ptr<RigidBody> body) {
 }
 
 void PhysicsWorld::RemoveBody(std::shared_ptr<RigidBody> body) {
-    m_engine->RemoveBody(body->GetChBody());
+    if (!body || !body->GetChBody()) return;
+    auto chbody = body->GetChBody();
+    if (auto collision = m_engine->GetSystem().GetCollisionSystem()) {
+        if (collision->IsInitialized()) collision->UnbindItem(chbody);
+    }
+    m_engine->RemoveBody(chbody);
     m_bodies.erase(
         std::remove(m_bodies.begin(), m_bodies.end(), body),
         m_bodies.end()
     );
+}
+
+void PhysicsWorld::ClearContacts() {
+    if (auto contacts = m_engine->GetSystem().GetContactContainer()) {
+        contacts->RemoveAllContacts();
+    }
 }
 
 void PhysicsWorld::AddLink(std::shared_ptr<chrono::ChLinkBase> link) {

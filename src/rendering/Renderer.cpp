@@ -229,6 +229,12 @@ void Renderer::BindAll() {
     }
 }
 
+void Renderer::UnbindItem(const std::shared_ptr<chrono::ChBody>& body) {
+    if (m_vis && body) {
+        m_vis->UnbindItem(body);
+    }
+}
+
 void Renderer::SetShowGrid(bool show) {
     m_showGrid = show;
 }

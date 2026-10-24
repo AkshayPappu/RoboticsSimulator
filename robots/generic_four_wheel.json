@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "name": "generic_four_wheel",
+  "root": "chassis",
+  "disconnected_policy": "error",
+  "bodies": [
+    {
+      "id": "chassis",
+      "part_id": "chassis_large",
+      "shape": "box",
+      "dimensions": [0.6, 0.12, 0.35],
+      "mass": 8.0,
+      "friction": 0.4,
+      "pose": { "position": [0.0, 0.16, 0.0], "rotation": [1, 0, 0, 0] }
+    },
+    {
+      "id": "wheel_fl",
+      "part_id": "wheel_std",
+      "shape": "cylinder",
+      "radius": 0.08,
+      "height": 0.04,
+      "mass": 0.4,
+      "friction": 1.2,
+      "parent": "chassis",
+      "pose": {
+        "position": [0.2, -0.08, -0.22],
+        "rotation": [0.7071067811865476, 0.7071067811865476, 0, 0]
+      }
+    },
+    {
+      "id": "wheel_fr",
+      "part_id": "wheel_std",
+      "shape": "cylinder",
+      "radius": 0.08,
+      "height": 0.04,
+      "mass": 0.4,
+      "friction": 1.2,
+      "parent": "chassis",
+      "pose": {
+        "position": [0.2, -0.08, 0.22],
+        "rotation": [0.7071067811865476, 0.7071067811865476, 0, 0]
+      }
+    },
+    {
+      "id": "wheel_rl",
+      "part_id": "wheel_std",
+      "shape": "cylinder",
+      "radius": 0.08,
+      "height": 0.04,
+      "mass": 0.4,
+      "friction": 1.2,
+      "parent": "chassis",
+      "pose": {
+        "position": [-0.2, -0.08, -0.22],
+        "rotation": [0.7071067811865476, 0.7071067811865476, 0, 0]
+      }
+    },
+    {
+      "id": "wheel_rr",
+      "part_id": "wheel_std",
+      "shape": "cylinder",
+      "radius": 0.08,
+      "height": 0.04,
+      "mass": 0.4,
+      "friction": 1.2,
+      "parent": "chassis",
+      "pose": {
+        "position": [-0.2, -0.08, 0.22],
+        "rotation": [0.7071067811865476, 0.7071067811865476, 0, 0]
+      }
+    }
+  ],
+  "joints": [
+    {
+      "id": "axle_fl",
+      "type": "revolute",
+      "body_a": "chassis",
+      "body_b": "wheel_fl",
+      "anchor": [0.2, -0.08, -0.22],
+      "axis": [0, 0, 1]
+    },
+    {
+      "id": "axle_fr",
+      "type": "revolute",
+      "body_a": "chassis",
+      "body_b": "wheel_fr",
+      "anchor": [0.2, -0.08, 0.22],
+      "axis": [0, 0, 1]
+    },
+    {
+      "id": "axle_rl",
+      "type": "revolute",
+      "body_a": "chassis",
+      "body_b": "wheel_rl",
+      "anchor": [-0.2, -0.08, -0.22],
+      "axis": [0, 0, 1]
+    },
+    {
+      "id": "axle_rr",
+      "type": "revolute",
+      "body_a": "chassis",
+      "body_b": "wheel_rr",
+      "anchor": [-0.2, -0.08, 0.22],
+      "axis": [0, 0, 1]
+    }
+  ],
+  "motors": [
+    { "id": "drive_fl", "joint": "axle_fl", "mode": "velocity", "max_speed": 12.0, "max_torque": 4.0, "drive": "left" },
+    { "id": "drive_fr", "joint": "axle_fr", "mode": "velocity", "max_speed": 12.0, "max_torque": 4.0, "drive": "right" },
+    { "id": "drive_rl", "joint": "axle_rl", "mode": "velocity", "max_speed": 12.0, "max_torque": 4.0, "drive": "left" },
+    { "id": "drive_rr", "joint": "axle_rr", "mode": "velocity", "max_speed": 12.0, "max_torque": 4.0, "drive": "right" }
+  ]
+}
