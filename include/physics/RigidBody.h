@@ -110,6 +110,7 @@ public:
     void AddVisualMesh(const std::string& path, double scale = 1.0,
                        double ox = 0.0, double oy = 0.0, double oz = 0.0);
     void ApplyVisual(const VisualSpec& spec, bool replaceDefault = true);
+    void SetTexture(const std::string& path, float scaleX = 1.0f, float scaleY = 1.0f);
     void SetPbr(float metallic, float roughness);
 
 private:

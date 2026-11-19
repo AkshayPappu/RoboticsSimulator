@@ -192,16 +192,18 @@ std::shared_ptr<RigidBody> RigidBody::CreateGround(const Material& material) {
     body->SetName("ground");
 
     rb->m_body = body;
-    rb->SetColor(0.78f, 0.76f, 0.72f);
+    rb->SetColor(0.74f, 0.73f, 0.70f);
     VisualSpec groundVis;
+    // Fine-tiled studio floor; asphalt looked blotchy at grazing angles.
     groundVis.texture = "textures/studio_floor.png";
-    groundVis.texScaleX = 25.0f;
-    groundVis.texScaleY = 25.0f;
-    groundVis.colorR = 0.78f;
-    groundVis.colorG = 0.76f;
-    groundVis.colorB = 0.72f;
+    groundVis.texScaleX = 22.0f;
+    groundVis.texScaleY = 22.0f;
+    groundVis.colorR = 0.74f;
+    groundVis.colorG = 0.73f;
+    groundVis.colorB = 0.70f;
     groundVis.metallic = 0.0f;
     groundVis.roughness = 0.88f;
+    // Texture + PBR material on the EasyBox ground visual.
     rb->ApplyVisual(groundVis, false);
     return rb;
 }
@@ -319,6 +321,11 @@ void RigidBody::AddVisualMesh(const std::string& path, double scale,
 void RigidBody::ApplyVisual(const VisualSpec& spec, bool replaceDefault) {
     if (!m_body) return;
     ApplyVisualSpec(*m_body, spec, replaceDefault);
+}
+
+void RigidBody::SetTexture(const std::string& path, float scaleX, float scaleY) {
+    if (!m_body || path.empty()) return;
+    ApplyShapeTexture(*m_body, path, scaleX, scaleY);
 }
 
 void RigidBody::SetPbr(float metallic, float roughness) {

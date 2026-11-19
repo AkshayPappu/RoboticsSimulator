@@ -1,16 +1,24 @@
 #include "robotics/Controller.h"
 #include "robotics/Robot.h"
 #include "rendering/Renderer.h"
+#include "rendering/KeyCodes.h"
 
-#include <irrlicht.h>
+#include <algorithm>
+#include <cmath>
 
 namespace robosim {
 
-// Irrlicht key codes for arrow keys
-static constexpr int KEY_UP = irr::KEY_UP;
-static constexpr int KEY_DOWN = irr::KEY_DOWN;
-static constexpr int KEY_LEFT = irr::KEY_LEFT;
-static constexpr int KEY_RIGHT = irr::KEY_RIGHT;
+namespace {
+
+double Approach(double current, double target, double rate, double dt) {
+    if (dt <= 0.0) return target;
+    const double maxStep = rate * dt;
+    const double delta = target - current;
+    if (std::abs(delta) <= maxStep) return target;
+    return current + std::copysign(maxStep, delta);
+}
+
+}  // namespace
 
 KeyboardController::KeyboardController(Renderer& renderer)
     : m_renderer(renderer)
@@ -20,42 +28,48 @@ KeyboardController::KeyboardController(Renderer& renderer)
 KeyboardController::~KeyboardController() = default;
 
 void KeyboardController::OnKeyEvent(int key, bool pressed) {
-    if (key == KEY_UP || key == irr::KEY_KEY_W)    m_keyForward = pressed;
-    if (key == KEY_DOWN || key == irr::KEY_KEY_S)  m_keyBackward = pressed;
-    if (key == KEY_LEFT || key == irr::KEY_KEY_A)  m_keyLeft = pressed;
-    if (key == KEY_RIGHT || key == irr::KEY_KEY_D) m_keyRight = pressed;
+    if (key == Key::Up || key == Key::W)    m_keyForward = pressed;
+    if (key == Key::Down || key == Key::S)  m_keyBackward = pressed;
+    if (key == Key::Left || key == Key::A)  m_keyLeft = pressed;
+    if (key == Key::Right || key == Key::D) m_keyRight = pressed;
 }
 
 void KeyboardController::Update(Robot& robot, double dt) {
-    (void)dt;
+    // Poll so held keys still drive even if a key-down event was missed.
+    const bool forward  = m_keyForward  || m_renderer.IsKeyPressed(Key::Up)    || m_renderer.IsKeyPressed(Key::W);
+    const bool backward = m_keyBackward || m_renderer.IsKeyPressed(Key::Down)  || m_renderer.IsKeyPressed(Key::S);
+    const bool leftTurn = m_keyLeft     || m_renderer.IsKeyPressed(Key::Left)  || m_renderer.IsKeyPressed(Key::A);
+    const bool rightTurn= m_keyRight    || m_renderer.IsKeyPressed(Key::Right) || m_renderer.IsKeyPressed(Key::D);
 
-    // Poll so held keys still drive even if a key-down event was missed
-    const bool forward  = m_keyForward  || m_renderer.IsKeyPressed(KEY_UP)    || m_renderer.IsKeyPressed(irr::KEY_KEY_W);
-    const bool backward = m_keyBackward || m_renderer.IsKeyPressed(KEY_DOWN)  || m_renderer.IsKeyPressed(irr::KEY_KEY_S);
-    const bool leftTurn = m_keyLeft     || m_renderer.IsKeyPressed(KEY_LEFT)  || m_renderer.IsKeyPressed(irr::KEY_KEY_A);
-    const bool rightTurn= m_keyRight    || m_renderer.IsKeyPressed(KEY_RIGHT) || m_renderer.IsKeyPressed(irr::KEY_KEY_D);
-
-    double left = 0.0;
-    double right = 0.0;
+    double targetLeft = 0.0;
+    double targetRight = 0.0;
 
     if (forward) {
-        left += m_speed;
-        right += m_speed;
+        targetLeft += m_speed;
+        targetRight += m_speed;
     }
     if (backward) {
-        left -= m_speed;
-        right -= m_speed;
+        targetLeft -= m_speed;
+        targetRight -= m_speed;
     }
     if (leftTurn) {
-        left -= m_turnSpeed;
-        right += m_turnSpeed;
+        targetLeft -= m_turnSpeed;
+        targetRight += m_turnSpeed;
     }
     if (rightTurn) {
-        left += m_turnSpeed;
-        right -= m_turnSpeed;
+        targetLeft += m_turnSpeed;
+        targetRight -= m_turnSpeed;
     }
 
-    robot.SetWheelSpeeds(left, right);
+    // Decelerate faster than accelerate so release feels snappy, press feels smooth.
+    const double rate = (std::abs(targetLeft) < 1e-6 && std::abs(targetRight) < 1e-6)
+                            ? m_accel * 1.8
+                            : m_accel;
+    const double stepDt = std::clamp(dt, 1.0 / 240.0, 1.0 / 20.0);
+    m_leftCmd = Approach(m_leftCmd, targetLeft, rate, stepDt);
+    m_rightCmd = Approach(m_rightCmd, targetRight, rate, stepDt);
+
+    robot.SetWheelSpeeds(m_leftCmd, m_rightCmd);
 }
 
 // ScriptController

@@ -17,19 +17,24 @@ int main() {
     chrono::ChSystemNSC sys;
     auto vis = chrono_types::make_shared<chrono::vsg3d::ChVisualSystemVSG>();
     vis->AttachSystem(&sys);
+    vis->SetVerbose(true);
     vis->SetWindowSize(800, 600);
-    vis->SetWindowTitle("VSG smoke (Arc A370M)");
+    vis->SetWindowTitle("VSG smoke");
     vis->SetWindowPosition(80, 80);
     vis->SetCameraVertical(chrono::CameraVerticalDir::Y);
+    // AddCamera must be called before Initialize (BindAll is done inside Initialize).
+    vis->AddCamera(chrono::ChVector3d(-2, 1.5, -2), chrono::ChVector3d(0, 0.2, 0));
 
     std::cout << "calling Initialize" << std::endl;
     std::cout.flush();
-    vis->Initialize();
+    try {
+        vis->Initialize();
+    } catch (const std::exception& e) {
+        std::cout << "Initialize threw: " << e.what() << std::endl;
+        return 2;
+    }
     std::cout << "Initialize returned" << std::endl;
     std::cout.flush();
-
-    vis->AddCamera(chrono::ChVector3d(-2, 1.5, -2), chrono::ChVector3d(0, 0.2, 0));
-    vis->BindAll();
 
     int frames = 0;
     while (vis->Run() && frames < 180) {

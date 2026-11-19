@@ -27,13 +27,17 @@ public:
 
     void SetSpeed(double speed) { m_speed = speed; }
     void SetTurnSpeed(double turnSpeed) { m_turnSpeed = turnSpeed; }
+    void SetAccel(double accel) { m_accel = accel; }
 
     void OnKeyEvent(int key, bool pressed);
 
 private:
     Renderer& m_renderer;
-    double m_speed = 8.0;
+    double m_speed = 7.5;
     double m_turnSpeed = 4.0;
+    double m_accel = 18.0;       // rad/s^2 toward target wheel speed
+    double m_leftCmd = 0.0;
+    double m_rightCmd = 0.0;
 
     bool m_keyForward = false;
     bool m_keyBackward = false;

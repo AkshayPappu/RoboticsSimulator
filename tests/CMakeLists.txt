@@ -34,7 +34,10 @@ set(SIM_LIB_SOURCES
 
 function(add_sim_test name src)
     add_executable(${name} ${src} ${SIM_LIB_SOURCES})
-    target_include_directories(${name} PRIVATE ${CMAKE_SOURCE_DIR}/include)
+    target_include_directories(${name} PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${VSGIMGUI_INCLUDE_DIR}
+    )
     target_compile_definitions(${name} PRIVATE
         "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
         "SIM_SCENES_DIR=\"${CMAKE_SOURCE_DIR}/scenes\""
@@ -45,9 +48,8 @@ function(add_sim_test name src)
         GTest::gtest_main
         ${CHRONO_TARGETS}
         nlohmann_json::nlohmann_json
-        imgui
         imguizmo_lib
-        opengl32
+        vsgImGui::vsgImGui
     )
     add_test(NAME ${name} COMMAND ${name})
 endfunction()

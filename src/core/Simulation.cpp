@@ -35,15 +35,8 @@ void Simulation::Init(const SimulationConfig& config) {
     m_sceneManager = std::make_unique<SceneManager>(*m_world);
     PartCatalog::Instance().Load();
 
-    if (!config.headless) {
-        m_renderer = std::make_unique<Renderer>();
-        RendererConfig rConfig;
-        rConfig.windowTitle = "Robotics Simulator";
-        m_renderer->Initialize(*m_world, rConfig);
-
-        m_editorUI = std::make_unique<EditorUI>();
-        m_editorUI->Initialize(*this);
-    }
+    // Visualization starts in StartVisualization() AFTER bodies are spawned so
+    // Chrono::VSG Initialize() can BindAll + viewer->compile() the real scene.
 
     // Initialize telemetry
     m_telemetry = std::make_unique<Telemetry>();
@@ -66,11 +59,32 @@ void Simulation::Init(const SimulationConfig& config) {
               << std::endl;
 }
 
+void Simulation::StartVisualization() {
+    if (m_config.headless || m_renderer) {
+        return;
+    }
+
+    m_renderer = std::make_unique<Renderer>();
+    m_editorUI = std::make_unique<EditorUI>();
+    // Editor must exist before Renderer::Initialize so ImGui draws via ChGuiComponentVSG.
+    m_editorUI->Initialize(*this);
+
+    RendererConfig rConfig;
+    rConfig.windowTitle = "Robotics Simulator";
+    m_renderer->Initialize(*m_world, rConfig, m_editorUI.get());
+    // Chrono::VSG::Initialize already BindAll'd attached systems and compiled the viewer.
+    m_visualsBoundAtInit = true;
+    std::cout << "[Simulation] Visualization started with scene already bound" << std::endl;
+}
+
 void Simulation::Run() {
     m_state = SimulationState::Running;
 
-    if (m_renderer) {
+    if (m_renderer && !m_visualsBoundAtInit) {
         m_renderer->BindAll();
+        m_visualsBoundAtInit = true;
+    } else if (m_renderer) {
+        m_renderer->ApplyProductVisualMode();
     }
 
     auto frameStart = std::chrono::high_resolution_clock::now();
@@ -88,23 +102,22 @@ void Simulation::Run() {
         try {
         if (m_editorUI) m_editorUI->ApplyPendingAssembly();
 
-        if (m_state == SimulationState::Running) {
-            double dt = m_config.physicsTimestep;
+        // Keep sim time close to wall-clock: 1ms steps × ~16 per 60fps frame = realtime
+        double frameDt = (m_config.renderFps > 1.0) ? (1.0 / m_config.renderFps) : (1.0 / 60.0);
 
+        if (m_state == SimulationState::Running) {
             if (m_preStepCallback) {
-                m_preStepCallback(dt);
+                m_preStepCallback(frameDt);
             }
 
             phase = "driving";
             if (m_controller && m_robot) {
-                m_controller->Update(*m_robot, dt);
+                m_controller->Update(*m_robot, frameDt);
             }
             phase = "simulating";
             // Sensors are sampled from the editor/inspector, not every physics tick,
             // so a bad raycast cannot take down the whole sim loop.
 
-            // Keep sim time close to wall-clock: 1ms steps × ~16 per 60fps frame = realtime
-            double frameDt = (m_config.renderFps > 1.0) ? (1.0 / m_config.renderFps) : (1.0 / 60.0);
             int substeps = static_cast<int>(std::lround(
                 (frameDt / m_config.physicsTimestep) * m_speedMultiplier));
             substeps = std::clamp(substeps, 1, 64);
@@ -124,17 +137,28 @@ void Simulation::Run() {
             }
 
             if (m_postStepCallback) {
-                m_postStepCallback(dt);
+                m_postStepCallback(frameDt);
             }
         }
 
         if (m_renderer) {
             phase = "drawing";
+            if (m_robot) {
+                double rx, ry, rz;
+                m_robot->GetPosition(rx, ry, rz);
+                // Pause soft-follow while orbiting/panning so the view does not fight the mouse.
+                const bool follow = !m_renderer->IsCameraManipulating();
+                m_renderer->UpdateFollowCamera(rx, ry, rz, frameDt, follow);
+            } else {
+                // Still clamp pitch/height when free-looking an empty scene.
+                double ex, ey, ez, tx, ty, tz;
+                if (m_renderer->GetCameraLook(ex, ey, ez, tx, ty, tz)) {
+                    m_renderer->UpdateFollowCamera(tx, ty, tz, frameDt, false);
+                }
+            }
+            // EditorUI::Render runs inside Chrono::VSG's ImGui pass (ChGuiComponentVSG).
             m_renderer->BeginFrame();
             m_renderer->Render();
-            if (m_editorUI) {
-                m_editorUI->Render();
-            }
             m_renderer->EndFrame();
         }
 

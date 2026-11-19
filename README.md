@@ -1,10 +1,8 @@
 # Robotics Simulator
 
-Chrono physics, JSON robots, and a live window. Headless and JSON stay first-class; the window is not the product API.
+Chrono physics, JSON robots, and a live Chrono::VSG (Vulkan) window. Headless and JSON stay first-class; the window is not the product API.
 
-**Pick this up on the NVIDIA gaming laptop.** Chrono::VSG is the next look step. It does not run on the Intel laptop this repo was last built on.
-
-## Current status (2026-10-23)
+## Current status (2026-11-19)
 
 Done and in this tree:
 
@@ -12,54 +10,62 @@ Done and in this tree:
 - Visual mesh vs collision hull split (`ChVisualShapeTriangleMesh` / OBJ, box-cylinder-sphere hulls)
 - Part catalog + click-to-snap assembler (`assets/parts/catalog.json`, Assemble tab)
 - Licensed **TurtleBot3 Burger** visuals on DiffDrive (`assets/parts/turtlebot3/`, Apache-2.0)
-- Irrlicht window works (`run.bat`)
+- **Chrono::VSG product window** on NVIDIA: solid PBR meshes, sky dome, textured ground, directional light, EditorUI chrome (Chrono Simulation HUD/logo hidden)
+- Isolated from-source Chrono install at `C:\Users\aksha\git\chrono-vsg-install` (MSYS2 Chrono left untouched)
+- Camera is **mouse-only** (LMB orbit / MMB pan / RMB zoom); WASD and arrows drive the robot
+- Product look is **in-app Chrono::VSG** — Isaac Sim is not a dependency
 
-Not done / blocked:
+Known limits:
 
-- **Chrono::VSG** (PBR lighting, sky, materials). Required for the look to jump from silhouette to real.
-- On the Intel laptop: `ChVisualSystemVSG::Initialize()` access-violates (`0xC0000005`) on **both** Iris Xe (GPU0) and Arc A370M (forced discrete ICD). `vulkaninfo` works; a tiny `vsg_smoke` still dies in `Initialize()`.
+- **Shadows** are off — `EnableShadows(true)` currently access-violates in `recordAndSubmit()` on this NVIDIA driver + VSG 1.1.14 stack.
+- Raster PBR product look, not Omniverse path-traced photoreal.
 - Four-wheel and arm still use the generated kit, not TB3/OpenManipulator.
-- MCP / chatbot later. Do not start that until VSG is a working window.
+- MCP / chatbot later.
 
-## Continue on the NVIDIA laptop
-
-1. Clone / pull `main` (this commit).
-2. Install the MSYS2 ucrt64 toolchain below (same as this machine).
-3. Build and confirm Irrlicht: `run.bat` — robot should drive, Burger silhouette visible.
-4. **First VSG action:** `run_vsg_smoke.bat` (or `build\vsg_smoke.exe` with MSYS PATH).
-   - Success: you see `Initialize returned` and `ok frames=...`, and a window stays open.
-   - Then swap only `src/rendering/Renderer.cpp` from `ChVisualSystemIrrlicht` to `chrono::vsg3d::ChVisualSystemVSG`. Physics, JSON, catalog, WASD stay as they are. Port keys with `ChEventHandlerVSG`.
-   - Failure: same `0xC0000005` means the NVIDIA Vulkan driver or Chrono data path is wrong; fix that before touching the main app.
-5. Do not turn the main exe to VSG until smoke survives.
-
-Force-Arc notes (`run_vsg_smoke.bat` sets `VK_DRIVER_FILES` to the Intel discrete ICD) are **only for the Intel hybrid laptop**. On NVIDIA, either delete those env vars or ignore the bat and run `vsg_smoke.exe` with Chrono’s `VSG_FILE_PATH` set to `C:\msys64\ucrt64\share\chrono\data\vsg`.
-
-## Toolchain (Windows, what actually builds here)
-
-MSYS2 **ucrt64**, MinGW Makefiles, Chrono 10 from pacman:
-
-```bat
-pacman -S --needed mingw-w64-ucrt-x86_64-toolchain mingw-w64-ucrt-x86_64-cmake ^
-  mingw-w64-ucrt-x86_64-projectchrono mingw-w64-ucrt-x86_64-vulkan-headers
-```
-
-Chrono’s MSYS package already has Irrlicht and VSG. Vulkan headers are required to **configure** VSG targets.
-
-```bat
-set PATH=C:\msys64\ucrt64\bin;C:\msys64\usr\bin;%PATH%
-cmake -S . -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
-cmake --build build --target RoboticsSimulator vsg_smoke -j 8
-```
-
-`CMakeLists.txt` overrides a broken `CHRONO_DATA_DIR` to `C:/msys64/ucrt64/share/chrono/data/` when the cmake prefix path does not exist.
+## Run (NVIDIA laptop)
 
 ```bat
 run.bat
 ```
 
+This sets:
+
+- `PATH` with `chrono-vsg-install\bin` **before** MSYS2 (so the patched Chrono_vsg loads)
+- `VSG_FILE_PATH=C:\Users\aksha\git\chrono-vsg-install\data` (data root, parent of `vsg/`)
+- `VK_LOADER_LAYERS_DISABLE=~implicit~` (blocks OBS/Epic overlay injection)
+
+Headless:
+
 ```bat
-RoboticsSimulator.exe --headless --robot robots/differential_drive.json --steps 200
+build\RoboticsSimulator.exe --headless --robot robots/differential_drive.json --steps 200
 ```
+
+VSG smoke regression:
+
+```bat
+run_vsg_smoke_nvidia.bat
+```
+
+## Build
+
+MSYS2 **ucrt64** + isolated Chrono (already built under `..\chrono-src` / installed to `..\chrono-vsg-install`):
+
+```bat
+set PATH=C:\msys64\ucrt64\bin;C:\msys64\usr\bin;%PATH%
+cmake -S . -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release ^
+  -DChrono_DIR=C:/Users/aksha/git/chrono-vsg-install/cmake
+cmake --build build --target RoboticsSimulator vsg_smoke -j 8
+```
+
+Required MSYS2 packages (VSG deps + toolchain; Chrono itself comes from the isolated install):
+
+```bat
+pacman -S --needed mingw-w64-ucrt-x86_64-toolchain mingw-w64-ucrt-x86_64-cmake ^
+  mingw-w64-ucrt-x86_64-vulkanscenegraph mingw-w64-ucrt-x86_64-vsgimgui ^
+  mingw-w64-ucrt-x86_64-vsgxchange mingw-w64-ucrt-x86_64-vulkan-headers
+```
+
+## CLI
 
 ```
 --headless          No window
@@ -70,6 +76,17 @@ RoboticsSimulator.exe --headless --robot robots/differential_drive.json --steps 
 ```
 
 Tests: `build\tests\test_robot.exe` (after `cmake --build build --target test_robot`).
+
+## Chrono::VSG notes
+
+- Renderer is `chrono::vsg3d::ChVisualSystemVSG` (`src/rendering/Renderer.cpp`). Physics stays Chrono; only the visualization backend changed.
+- Editor ImGui draws inside `ChGuiComponentVSG::render()` (no OpenGL ImGui backend).
+- WASD / arrows use `ChEventHandlerVSG` + backend-agnostic `include/rendering/KeyCodes.h`.
+- Trackball keyboard bindings are cleared in Chrono (`KEY_Undefined`) so drive keys are not stolen; orbit/pan/zoom are mouse-only.
+- Product visual mode (`ApplyProductVisualMode`) hides Chrono base GUI/logo and collision wireframes; body visual assets stay on.
+- Chrono patches in `chrono-src`: (1) skip `SharedObjects::share()` on `GraphicsPipelineConfigurator` (vsg 1.1.x null-deref), (2) mouse-only Trackball. Re-apply if you rebuild Chrono from a clean tree.
+
+Historical: the Intel laptop forced Arc ICD via `run_vsg_smoke.bat`. That bat is Intel-only. On NVIDIA use `run_vsg_smoke_nvidia.bat`.
 
 ## Assembly graph (schema v1)
 
@@ -93,16 +110,16 @@ assets/parts/turtlebot3/  Burger base, tires, LDS (Apache-2.0)
 assets/textures/        Procedural albedos
 robots/                 DiffDrive (TB3 visuals), four_wheel, robot_arm, assembled_diff
 scripts/                generate_parts.py, import_turtlebot3.py
-src/rendering/          Irrlicht window + ImGui editor (VSG is next)
-src/vsg_smoke.cpp       Isolated Chrono::VSG Initialize() test
+src/rendering/          Chrono::VSG window + ImGui editor
+src/vsg_smoke.cpp       Isolated Chrono::VSG Initialize() regression probe
 ```
 
 ## Assets / license
 
 Repo code is MIT. Generated meshes and noise textures are original. TurtleBot3 Burger files are ROBOTIS, Apache-2.0 — see `assets/LICENSE` and `assets/parts/turtlebot3/`. Do not scrape Sketchfab.
 
-## What not to do on pickup
+## What not to do
 
 - Do not switch the product to Unity/Unreal.
 - Do not treat VSG as the API; `--headless` and JSON stay.
-- Do not jump to MCP until catalog + a working vis window exist (catalog is done; vis window on NVIDIA is VSG).
+- Do not jump to MCP until the VSG window is stable on your machine.

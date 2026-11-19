@@ -122,24 +122,35 @@ void RunRobotDemo(Simulation& sim) {
     t1.px = 3.0; t1.py = 0.5; t1.pz = 0.0;
     auto obs1 = RigidBody::CreateBox(1.0, 1.0, 1.0, 0.0, t1, obsMat);
     obs1->SetName("obstacle_1");
-    obs1->SetColor(0.85f, 0.28f, 0.22f);
+    obs1->SetColor(0.72f, 0.48f, 0.28f);
     obs1->AddVisualMesh("parts/obstacle_crate.obj", 1.0);
+    obs1->SetTexture("textures/wood.png", 1.5f, 1.5f);
     world.AddBody(obs1);
 
     BodyTransform t2;
-    t2.px = -2.0; t2.py = 0.25; t2.pz = 3.0;
-    auto obs2 = RigidBody::CreateBox(2.0, 0.5, 0.5, 0.0, t2, obsMat);
+    t2.px = -2.2; t2.py = 0.28; t2.pz = 3.2;
+    auto obs2 = RigidBody::CreateBox(1.6, 0.55, 0.55, 0.0, t2, obsMat);
     obs2->SetName("obstacle_2");
-    obs2->SetColor(0.90f, 0.55f, 0.18f);
+    obs2->SetColor(0.22f, 0.42f, 0.78f);
+    obs2->SetTexture("textures/paint_blue.png", 1.2f, 1.2f);
     world.AddBody(obs2);
 
     BodyTransform t3;
-    t3.px = 0.0; t3.py = 0.3; t3.pz = -4.0;
-    auto obs3 = RigidBody::CreateCylinder(0.5, 0.6, 0.0, t3, obsMat);
+    t3.px = 0.4; t3.py = 0.32; t3.pz = -3.6;
+    auto obs3 = RigidBody::CreateCylinder(0.45, 0.64, 0.0, t3, obsMat);
     obs3->SetName("obstacle_3");
-    obs3->SetColor(0.72f, 0.22f, 0.45f);
+    obs3->SetColor(0.78f, 0.22f, 0.20f);
     obs3->AddVisualMesh("parts/obstacle_barrel.obj", 1.0);
+    obs3->SetTexture("textures/paint_red.png", 1.0f, 1.0f);
     world.AddBody(obs3);
+
+    BodyTransform t4;
+    t4.px = 5.5; t4.py = 0.22; t4.pz = 2.0;
+    auto obs4 = RigidBody::CreateBox(1.2, 0.45, 0.8, 0.0, t4, obsMat);
+    obs4->SetName("obstacle_4");
+    obs4->SetColor(0.86f, 0.72f, 0.22f);
+    obs4->SetTexture("textures/paint_yellow.png", 1.0f, 1.0f);
+    world.AddBody(obs4);
 
     // Build robot
     auto robot = std::make_shared<Robot>();
@@ -151,17 +162,20 @@ void RunRobotDemo(Simulation& sim) {
 #endif
     robot->BuildFromJson(world, robotPath);
     sim.SetRobot(robot);
+    std::cout << "[Demo] Robot demo scene ready" << std::endl;
+}
 
-    if (auto* renderer = sim.TryGetRenderer()) {
-        auto controller = std::make_shared<KeyboardController>(*renderer);
-        renderer->SetKeyCallback([controller](int key, bool pressed) {
-            controller->OnKeyEvent(key, pressed);
-        });
-        sim.SetController(controller);
-        std::cout << "[Demo] Robot demo ready — use WASD or arrow keys to drive" << std::endl;
-    } else {
-        std::cout << "[Demo] Robot demo ready (headless)" << std::endl;
+void AttachDriveControls(Simulation& sim) {
+    auto* renderer = sim.TryGetRenderer();
+    if (!renderer || !sim.GetRobot()) {
+        return;
     }
+    auto controller = std::make_shared<KeyboardController>(*renderer);
+    renderer->SetKeyCallback([controller](int key, bool pressed) {
+        controller->OnKeyEvent(key, pressed);
+    });
+    sim.SetController(controller);
+    std::cout << "[Demo] Use WASD or arrow keys to drive" << std::endl;
 }
 
 int main(int argc, char* argv[]) {
@@ -181,6 +195,8 @@ int main(int argc, char* argv[]) {
 
     sim.Init(simConfig);
 
+    // Spawn physics/visual assets BEFORE opening Chrono::VSG so Initialize()'s
+    // BindAll + viewer->compile() actually uploads meshes (not an empty scene).
     if (!appConfig.scenePath.empty()) {
         if (!appConfig.robotPath.empty()) {
             auto robot = std::make_shared<Robot>();
@@ -195,6 +211,11 @@ int main(int argc, char* argv[]) {
             robot->BuildFromJson(sim.GetWorld(), appConfig.robotPath);
             sim.SetRobot(robot);
         }
+    }
+
+    if (!appConfig.headless) {
+        sim.StartVisualization();
+        AttachDriveControls(sim);
     }
 
     // Print sim info periodically

@@ -14,7 +14,7 @@
 #include <functional>
 #include <nlohmann/json.hpp>
 
-#include <imgui.h>
+#include <vsgImGui/imgui.h>
 #include <ImGuizmo.h>
 #include <chrono/physics/ChSystem.h>
 
@@ -44,10 +44,12 @@ void EditorUI::Initialize(Simulation& sim) {
     if (!PartCatalog::Instance().IsLoaded()) {
         PartCatalog::Instance().Load();
     }
-    m_sim->GetRenderer().SetMouseCallback(
-        [this](int x, int y, bool left, bool right, float wheel) {
-            HandleAssemblerMouse(x, y, left, right, wheel);
-        });
+    if (m_sim->TryGetRenderer()) {
+        m_sim->GetRenderer().SetMouseCallback(
+            [this](int x, int y, bool left, bool right, float wheel) {
+                HandleAssemblerMouse(x, y, left, right, wheel);
+            });
+    }
 
     Log("[Editor] Click the 3D view, then drive with W A S D or the arrow keys.");
     Log("[Editor] Robot builder: choose a part, then add it or click a socket.");
@@ -55,6 +57,32 @@ void EditorUI::Initialize(Simulation& sim) {
 
 void EditorUI::Render() {
     if (!m_initialized || !m_sim) return;
+
+    // ImGui context exists only after Chrono::VSG Initialize — style once on first draw.
+    static bool styled = false;
+    if (!styled && ImGui::GetCurrentContext() != nullptr) {
+        ImGuiStyle& style = ImGui::GetStyle();
+        style.WindowRounding = 8.0f;
+        style.FrameRounding = 4.0f;
+        style.GrabRounding = 3.0f;
+        style.ScrollbarRounding = 6.0f;
+        style.WindowBorderSize = 0.0f;
+        style.FrameBorderSize = 0.0f;
+        style.WindowPadding = ImVec2(12.0f, 10.0f);
+        style.ItemSpacing = ImVec2(8.0f, 6.0f);
+        style.Colors[ImGuiCol_WindowBg] = ImVec4(0.07f, 0.08f, 0.10f, 0.82f);
+        style.Colors[ImGuiCol_ChildBg] = ImVec4(0.07f, 0.08f, 0.10f, 0.55f);
+        style.Colors[ImGuiCol_PopupBg] = ImVec4(0.08f, 0.09f, 0.11f, 0.96f);
+        style.Colors[ImGuiCol_TitleBg] = ImVec4(0.10f, 0.11f, 0.14f, 0.90f);
+        style.Colors[ImGuiCol_TitleBgActive] = ImVec4(0.14f, 0.16f, 0.20f, 0.95f);
+        style.Colors[ImGuiCol_FrameBg] = ImVec4(0.14f, 0.16f, 0.19f, 0.90f);
+        style.Colors[ImGuiCol_Button] = ImVec4(0.20f, 0.42f, 0.62f, 0.90f);
+        style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.26f, 0.52f, 0.74f, 1.0f);
+        style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.16f, 0.36f, 0.56f, 1.0f);
+        style.Colors[ImGuiCol_Header] = ImVec4(0.18f, 0.28f, 0.38f, 0.80f);
+        style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.22f, 0.38f, 0.52f, 0.90f);
+        styled = true;
+    }
 
     // Track FPS
     static auto lastTime = std::chrono::high_resolution_clock::now();
@@ -295,8 +323,8 @@ void EditorUI::RenderMenuBar() {
 // --- Toolbar ---
 
 void EditorUI::RenderToolbar() {
-    ImGui::SetNextWindowPos(ImVec2(8, 26), ImGuiCond_Always);
-    ImGui::SetNextWindowBgAlpha(0.92f);
+    ImGui::SetNextWindowPos(ImVec2(12, 28), ImGuiCond_Always);
+    ImGui::SetNextWindowBgAlpha(0.78f);
     ImGui::Begin("##hud", &m_state.showToolbar,
                  ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize |
                  ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
@@ -564,18 +592,17 @@ void EditorUI::RenderRobotBuilderPanel() {
 
 void EditorUI::RenderHelpOverlay() {
     ImGuiIO& io = ImGui::GetIO();
-    float y = io.DisplaySize.y > 16.0f ? io.DisplaySize.y - 8.0f : 700.0f;
-    ImGui::SetNextWindowPos(ImVec2(8, y), ImGuiCond_Always, ImVec2(0, 1));
-    ImGui::SetNextWindowBgAlpha(0.85f);
+    float y = io.DisplaySize.y > 16.0f ? io.DisplaySize.y - 12.0f : 700.0f;
+    ImGui::SetNextWindowPos(ImVec2(12, y), ImGuiCond_Always, ImVec2(0, 1));
+    ImGui::SetNextWindowBgAlpha(0.72f);
     ImGui::Begin("##help", nullptr,
                  ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
                  ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav |
                  ImGuiWindowFlags_NoMove);
 
-    ImGui::Text("Click the 3D view. W/S drive, A/D turn.");
-    ImGui::TextUnformatted("Drag to orbit, wheel to zoom, right-drag to pan.");
+    ImGui::TextUnformatted("W/S drive  ·  A/D turn  ·  LMB orbit  ·  RMB pan  ·  wheel zoom  ·  camera follows robot");
     ImGui::SameLine();
-    ImGui::TextDisabled("%.0f FPS", m_fps);
+    ImGui::TextDisabled("  %.0f FPS", m_fps);
     ImGui::End();
 }
 

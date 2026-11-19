@@ -41,6 +41,8 @@ public:
     Simulation& operator=(const Simulation&) = delete;
 
     void Init(const SimulationConfig& config = {});
+    /// Open the Chrono::VSG window after bodies exist so Initialize()'s BindAll+compile sees them.
+    void StartVisualization();
     void Run();
     void Stop();
 
@@ -95,6 +97,7 @@ private:
     SimulationConfig m_config;
     double m_speedMultiplier = 1.0;
     int m_stepCount = 0;
+    bool m_visualsBoundAtInit = false;
 
     FrameCallback m_preStepCallback;
     FrameCallback m_postStepCallback;

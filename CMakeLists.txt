@@ -16,39 +16,41 @@ option(ENABLE_HEADLESS "Build with headless support (no visualization)" OFF)
 # Dependencies
 # ----------------------------------------------------------------------------
 
-# MSYS2 paths - override the hardcoded build-machine paths in ChronoConfig
+# Isolated from-source Chrono (core + VSG + robot models). MSYS2 Chrono stays
+# untouched — its Chrono_vsg binary was ABI-broken against current vsg.
+set(CHRONO_VSG_INSTALL_DIR "C:/Users/aksha/git/chrono-vsg-install" CACHE PATH
+    "Isolated Chrono install with VSG")
+
 set(EIGEN3_INCLUDE_DIR "C:/msys64/ucrt64/include/eigen3" CACHE PATH "Eigen3 include dir" FORCE)
 set(Eigen3_DIR "C:/msys64/ucrt64/share/eigen3/cmake" CACHE PATH "Eigen3 cmake dir" FORCE)
-set(Irrlicht_INCLUDE_DIR "C:/msys64/ucrt64/include/irrlicht" CACHE PATH "Irrlicht include dir" FORCE)
-set(Irrlicht_LIBRARY "C:/msys64/ucrt64/lib/libirrlicht.dll.a" CACHE PATH "Irrlicht library" FORCE)
-
-# Main app stays on Irrlicht. Isolated vsg_smoke can be built to test Arc A370M.
 set(vsg_DIR "C:/msys64/ucrt64/lib/cmake/vsg" CACHE PATH "vsg cmake dir")
 set(vsgImGui_DIR "C:/msys64/ucrt64/lib/cmake/vsgImGui" CACHE PATH "vsgImGui cmake dir")
 set(vsgXchange_DIR "C:/msys64/ucrt64/lib/cmake/vsgXchange" CACHE PATH "vsgXchange cmake dir")
 set(glslang_DIR "C:/msys64/ucrt64/lib/cmake/glslang" CACHE PATH "glslang cmake dir")
 set(SPIRV-Tools_DIR "C:/msys64/ucrt64/lib/cmake/SPIRV-Tools" CACHE PATH "SPIRV-Tools cmake dir")
 set(SPIRV-Tools-opt_DIR "C:/msys64/ucrt64/lib/cmake/SPIRV-Tools-opt" CACHE PATH "SPIRV-Tools-opt cmake dir")
-# ChronoTargets always references vsg::vsg, so import those packages first.
-find_package(vsg CONFIG QUIET)
-find_package(vsgImGui CONFIG QUIET)
-find_package(vsgXchange CONFIG QUIET)
+
+find_package(vsg CONFIG REQUIRED)
+find_package(vsgImGui CONFIG REQUIRED)
+find_package(vsgXchange CONFIG REQUIRED)
 
 find_package(Chrono
-    COMPONENTS Irrlicht
+    COMPONENTS VSG
     CONFIG
-    PATHS "C:/msys64/ucrt64/lib/cmake/Chrono"
+    REQUIRED
+    PATHS "${CHRONO_VSG_INSTALL_DIR}/cmake"
+    NO_DEFAULT_PATH
 )
 
-if(Chrono_FOUND)
-    if(NOT EXISTS "${CHRONO_DATA_DIR}/textures/concrete.jpg")
-        set(CHRONO_DATA_DIR "C:/msys64/ucrt64/share/chrono/data/")
-    endif()
-    message(STATUS "Chrono found: targets = ${CHRONO_TARGETS}")
-    message(STATUS "Chrono data dir: ${CHRONO_DATA_DIR}")
-else()
-    message(FATAL_ERROR "Project Chrono not found. Install via: pacman -S mingw-w64-ucrt-x86_64-projectchrono")
+if(NOT EXISTS "${CHRONO_DATA_DIR}/textures/concrete.jpg")
+    set(CHRONO_DATA_DIR "${CHRONO_VSG_INSTALL_DIR}/data/")
 endif()
+message(STATUS "Chrono found: targets = ${CHRONO_TARGETS}")
+message(STATUS "Chrono data dir: ${CHRONO_DATA_DIR}")
+
+# ImGui comes from vsgImGui (same instance Chrono::VSG uses). Point includes so
+# `#include <imgui.h>` (ImGuizmo) and `#include <vsgImGui/imgui.h>` both resolve.
+set(VSGIMGUI_INCLUDE_DIR "C:/msys64/ucrt64/include/vsgImGui")
 
 # nlohmann/json (header-only JSON library)
 include(FetchContent)
@@ -61,48 +63,42 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(json)
 
-# Dear ImGui
-FetchContent_Declare(
-    imgui
-    GIT_REPOSITORY https://github.com/ocornut/imgui.git
-    GIT_TAG        v1.90.4
-    GIT_SHALLOW    TRUE
-)
-FetchContent_MakeAvailable(imgui)
-
-set(IMGUI_DIR ${imgui_SOURCE_DIR})
-add_library(imgui STATIC
-    ${IMGUI_DIR}/imgui.cpp
-    ${IMGUI_DIR}/imgui_demo.cpp
-    ${IMGUI_DIR}/imgui_draw.cpp
-    ${IMGUI_DIR}/imgui_tables.cpp
-    ${IMGUI_DIR}/imgui_widgets.cpp
-    ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
-)
-target_include_directories(imgui PUBLIC
-    ${IMGUI_DIR}
-    ${IMGUI_DIR}/backends
-)
-
 set(IMGUIZMO_DIR ${CMAKE_BINARY_DIR}/imguizmo)
 file(MAKE_DIRECTORY ${IMGUIZMO_DIR})
 
-if(NOT EXISTS ${IMGUIZMO_DIR}/ImGuizmo.h)
-    file(DOWNLOAD
-        "https://raw.githubusercontent.com/CedricGuillemet/ImGuizmo/master/ImGuizmo.h"
-        ${IMGUIZMO_DIR}/ImGuizmo.h
-    )
-endif()
-if(NOT EXISTS ${IMGUIZMO_DIR}/ImGuizmo.cpp)
-    file(DOWNLOAD
-        "https://raw.githubusercontent.com/CedricGuillemet/ImGuizmo/master/ImGuizmo.cpp"
-        ${IMGUIZMO_DIR}/ImGuizmo.cpp
-    )
-endif()
+# ImGuizmo moved its sources under src/ and no longer ships them at the repo
+# root, so pin to a known commit and fetch from src/. Re-download whenever the
+# cached file is missing OR empty (a failed download leaves a 0-byte file that
+# would otherwise be treated as present).
+set(IMGUIZMO_COMMIT "105e4fde45e4e74aae8973d98750820ef7aca7e2")
+foreach(imguizmo_file ImGuizmo.h ImGuizmo.cpp)
+    set(imguizmo_path ${IMGUIZMO_DIR}/${imguizmo_file})
+    if(EXISTS ${imguizmo_path})
+        file(SIZE ${imguizmo_path} imguizmo_size)
+    else()
+        set(imguizmo_size 0)
+    endif()
+    if(imguizmo_size EQUAL 0)
+        file(DOWNLOAD
+            "https://raw.githubusercontent.com/CedricGuillemet/ImGuizmo/${IMGUIZMO_COMMIT}/src/${imguizmo_file}"
+            ${imguizmo_path}
+            STATUS imguizmo_status
+        )
+        list(GET imguizmo_status 0 imguizmo_code)
+        if(NOT imguizmo_code EQUAL 0)
+            file(REMOVE ${imguizmo_path})
+            list(GET imguizmo_status 1 imguizmo_error)
+            message(FATAL_ERROR "Failed to download ${imguizmo_file}: ${imguizmo_error}")
+        endif()
+    endif()
+endforeach()
 
 add_library(imguizmo_lib STATIC ${IMGUIZMO_DIR}/ImGuizmo.cpp)
-target_include_directories(imguizmo_lib PUBLIC ${IMGUIZMO_DIR})
-target_link_libraries(imguizmo_lib PUBLIC imgui)
+target_include_directories(imguizmo_lib PUBLIC
+    ${IMGUIZMO_DIR}
+    ${VSGIMGUI_INCLUDE_DIR}
+)
+target_link_libraries(imguizmo_lib PUBLIC vsgImGui::vsgImGui)
 
 # ----------------------------------------------------------------------------
 # Source files
@@ -166,6 +162,7 @@ add_executable(${PROJECT_NAME} ${SIMULATOR_SOURCES} ${SIMULATOR_HEADERS})
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/include
+    ${VSGIMGUI_INCLUDE_DIR}
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE ${SIM_COMPILE_DEFS})
@@ -173,9 +170,8 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE ${SIM_COMPILE_DEFS})
 target_link_libraries(${PROJECT_NAME} PRIVATE
     ${CHRONO_TARGETS}
     nlohmann_json::nlohmann_json
-    imgui
     imguizmo_lib
-    opengl32
+    vsgImGui::vsgImGui
 )
 
 # Copy Chrono DLLs to output directory on Windows
@@ -229,14 +225,16 @@ if(BUILD_PYTHON_BINDINGS)
     )
 
     pybind11_add_module(robosim src/bindings/PySimBridge.cpp ${SIM_BINDING_SOURCES})
-    target_include_directories(robosim PRIVATE ${CMAKE_SOURCE_DIR}/include)
+    target_include_directories(robosim PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${VSGIMGUI_INCLUDE_DIR}
+    )
     target_compile_definitions(robosim PRIVATE ${SIM_COMPILE_DEFS})
     target_link_libraries(robosim PRIVATE
         ${CHRONO_TARGETS}
         nlohmann_json::nlohmann_json
-        imgui
         imguizmo_lib
-        opengl32
+        vsgImGui::vsgImGui
     )
     message(STATUS "Python bindings: ENABLED")
 endif()

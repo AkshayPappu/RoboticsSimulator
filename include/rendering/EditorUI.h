@@ -28,7 +28,7 @@ struct EditorState {
     bool showInspector = false;
     bool showToolbar = true;
     bool showConsole = false;
-    bool showRobotBuilder = true;
+    bool showRobotBuilder = false;
     bool showDemoWindow = false;
     bool showGrid = false;
     bool showHelp = true;

@@ -67,5 +67,5 @@
     }
   ],
   "max_motor_speed": 10.0,
-  "max_torque": 5.0
+  "max_torque": 6.0
 }

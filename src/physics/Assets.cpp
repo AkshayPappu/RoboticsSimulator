@@ -51,12 +51,16 @@ std::shared_ptr<chrono::ChVisualMaterial> MakeVisualMaterial(
     auto mat = chrono_types::make_shared<chrono::ChVisualMaterial>();
     chrono::ChColor color(r, g, b);
     mat->SetDiffuseColor(color);
-    // Irrlicht is Phong, not PBR: keep ambient high enough that meshes don't fall into black.
-    mat->SetAmbientColor(chrono::ChColor(r * 0.50f, g * 0.50f, b * 0.50f));
-    mat->SetSpecularColor(chrono::ChColor(0.12f, 0.12f, 0.12f));
-    mat->SetUseSpecularWorkflow(true);
-    mat->SetMetallic(metallic);
-    mat->SetRoughness(roughness);
+    // Chrono::VSG PBR without shadows: warm ambient fill + tiny emissive so solids read clearly.
+    mat->SetAmbientColor(chrono::ChColor(
+        std::min(1.0f, r * 0.58f + 0.04f),
+        std::min(1.0f, g * 0.58f + 0.04f),
+        std::min(1.0f, b * 0.58f + 0.05f)));
+    mat->SetEmissiveColor(chrono::ChColor(r * 0.025f, g * 0.025f, b * 0.028f));
+    mat->SetSpecularColor(chrono::ChColor(0.08f, 0.08f, 0.09f));
+    mat->SetUseSpecularWorkflow(false);
+    mat->SetMetallic(std::clamp(metallic, 0.0f, 1.0f));
+    mat->SetRoughness(std::clamp(roughness, 0.18f, 1.0f));
     if (!texture.empty()) {
         std::string resolved = ResolveAssetPath(texture);
         mat->SetKdTexture(resolved);
@@ -118,6 +122,7 @@ void ApplyVisualSpec(chrono::ChBody& body, const VisualSpec& spec, bool replaceD
             tri->SetMesh(mesh, false);
             tri->SetScale(chrono::ChVector3d(spec.scaleX, spec.scaleY, spec.scaleZ));
             tri->SetMutable(false);
+            tri->SetWireframe(false);
             tri->SetBackfaceCull(true);
             shape = tri;
         } else {
@@ -129,10 +134,15 @@ void ApplyVisualSpec(chrono::ChBody& body, const VisualSpec& spec, bool replaceD
         float r = spec.colorR >= 0.0f ? spec.colorR : 0.65f;
         float g = spec.colorG >= 0.0f ? spec.colorG : 0.65f;
         float b = spec.colorB >= 0.0f ? spec.colorB : 0.65f;
-        float metallic = spec.metallic >= 0.0f ? spec.metallic : 0.35f;
-        float roughness = spec.roughness >= 0.0f ? spec.roughness : 0.45f;
+        // Soft non-metal defaults so plastic/painted parts stay bright under PBR.
+        float metallic = spec.metallic >= 0.0f ? spec.metallic : 0.08f;
+        float roughness = spec.roughness >= 0.0f ? spec.roughness : 0.65f;
         auto mat = MakeVisualMaterial(r, g, b, metallic, roughness, spec.texture, spec.texScaleX, spec.texScaleY);
-        shape->SetMaterial(0, mat);
+        if (shape->GetNumMaterials() == 0) {
+            shape->AddMaterial(mat);
+        } else {
+            shape->SetMaterial(0, mat);
+        }
         shape->SetColor(chrono::ChColor(r, g, b));
 
         body.AddVisualShape(
@@ -150,7 +160,18 @@ void ApplyShapeTexture(chrono::ChBody& body, const std::string& texture, float s
     auto vis = body.GetVisualModel();
     if (!vis) return;
     for (unsigned int i = 0; i < vis->GetNumShapes(); ++i) {
-        vis->GetShape(i)->SetTexture(resolved, scaleX, scaleY);
+        auto shape = vis->GetShape(i);
+        shape->SetTexture(resolved, scaleX, scaleY);
+        // Ensure a PBR material carries the albedo texture for Chrono::VSG.
+        if (shape->GetNumMaterials() == 0) {
+            auto mat = MakeVisualMaterial(0.78f, 0.76f, 0.72f, 0.0f, 0.88f, resolved, scaleX, scaleY);
+            shape->AddMaterial(mat);
+        } else {
+            auto mat = shape->GetMaterial(0);
+            mat->SetKdTexture(resolved);
+            mat->SetTextureScale(scaleX, scaleY);
+            mat->SetUseSpecularWorkflow(false);
+        }
     }
 }
 
